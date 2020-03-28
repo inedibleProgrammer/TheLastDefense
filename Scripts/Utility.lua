@@ -17,3 +17,14 @@ function Utility.MySplit(input_str, sep)
   end
   return t
 end
+
+Utility.Point = {}
+
+function Utility.Point.Create(x, y)
+  local this = {}
+
+  this.x = x
+  this.y = y
+
+  return this
+end

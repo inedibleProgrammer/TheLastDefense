@@ -33,13 +33,53 @@ STRING 7
 LoadingScreenText
 }
 
-STRING 8
+STRING 10
 {
-Player 1
+FirstDefender
 }
 
-STRING 9
+STRING 11
 {
-Force 1
+SecondDefender
+}
+
+STRING 12
+{
+ThirdDefender
+}
+
+STRING 13
+{
+FourthDefender
+}
+
+STRING 14
+{
+FirstAbomination
+}
+
+STRING 15
+{
+SecondAbomination
+}
+
+STRING 16
+{
+ThirdAbomination
+}
+
+STRING 17
+{
+FourthAbomination
+}
+
+STRING 18
+{
+Defenders
+}
+
+STRING 19
+{
+Abominations
 }
 
