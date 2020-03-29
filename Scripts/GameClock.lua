@@ -33,3 +33,9 @@ function this.GetTime()
   t.seconds = this.seconds
   return t
 end
+
+function this.GetElapsedSeconds()
+  local hoursToSeconds = this.hours * 3600
+  local minutesToSeconds = this.minutes * 60
+  local elapsedSeconds = hoursToSeconds + minutesToSeconds + this.seconds
+end

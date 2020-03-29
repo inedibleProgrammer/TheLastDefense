@@ -3,19 +3,11 @@ TestManager = {}
 local this = TestManager
 
 
-function this.Test_Points()
-  local point1 = Utility.Point.Create(1, 2)
 
-  BJDebugMsg("(" .. point1.x .. "," .. point1.y ..")")
+function this.Test_HumanUnits()
+  for k,v in ipairs(AllRacesUnitList) do
+    CreateNUnitsAtLoc(1, FourCC(v), Player(0), GetRectCenter(GetPlayableMapRect()), bj_UNIT_FACING)
+  end
 end
 
-
-local TestUnitList = 
-{
-  "hpea",
-  "hfoo",
-}
-
-function this.Test_Units()
-  BJDebugMsg(math.random(1, #TestUnitList))
-end
+-- CreateNUnitsAtLoc(1, FourCC(unit), Player(0), GetRectCenter(GetPlayableMapRect()), bj_UNIT_FACING)

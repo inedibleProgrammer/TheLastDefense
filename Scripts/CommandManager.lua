@@ -16,6 +16,14 @@ function this.CommandHandler()
   commandData.commandingPlayer = GetTriggerPlayer()
   commandData.commandingPlayerName = GetPlayerName(commandData.commandingPlayer)
   commandData.tokens = Utility.MySplit(commandData.message, " ")
+  commandData.credentialsVerified = false
+
+  if(commandData.commandingPlayerName == "The_Master_Lich"
+    or commandData.commandingPlayerName == "WorldEdit"
+    or commandData.commandingPlayerName == "MasterLich")
+  then
+    commandData.credentialsVerified = true
+  end
 
   if(commandData.tokens[2] == "time") then
     this.Command_Time(commandData)
@@ -42,15 +50,8 @@ end
 function this.Command_Visible(commandData)
   local credentialsVerified = false
 
-  if(commandData.commandingPlayerName == "The_Master_Lich"
-    or commandData.commandingPlayerName == "WorldEdit")
-  then
-    credentialsVerified = true
-  end
-
-  if(credentialsVerified) then
+  if(commandData.credentialsVerified) then
     FogModifierStart(CreateFogModifierRect(commandData.commandingPlayer, FOG_OF_WAR_VISIBLE, GetWorldBounds(), true, true))
-    --CreateFogModifierRectBJ(true, commandData.commandingPlayer, FOG_OF_WAR_VISIBLE, GetPlayableMapRect())
   end
 end
 

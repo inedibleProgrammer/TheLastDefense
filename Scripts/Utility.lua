@@ -18,13 +18,8 @@ function Utility.MySplit(input_str, sep)
   return t
 end
 
-Utility.Point = {}
-
-function Utility.Point.Create(x, y)
-  local this = {}
-
-  this.x = x
-  this.y = y
-
-  return this
+function Utility.TableMerge(t1, t2)
+  for k,v in ipairs(t2) do
+      table.insert(t1, v)
+  end
 end
