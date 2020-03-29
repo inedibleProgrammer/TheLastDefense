@@ -22,9 +22,9 @@ function Abomination.Create(name, player, spawnPoint)
     local isHero = true
 
     while(isHero == true) do
-      local r = GetRandomInt(1, #AllRacesUnitList)
+      local r = GetRandomInt(1, #AllUnitList)
 
-      local u = CreateUnit(this.player, FourCC(AllRacesUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
+      local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
       IssuePointOrder(u, "attackground", this.objectivePoint.x, this.objectivePoint.y)
 
       if(IsHeroUnitId(GetUnitTypeId(u))) then
@@ -90,7 +90,7 @@ end
 function this.AbominationSpawn()
   for k,v in ipairs(this.AbominationList) do
     if(v.active) then
-      if(ModuloInteger(GameClock.GetElapsedSeconds(), 5) == 0) then
+      if(ModuloInteger(GameClock.GetElapsedSeconds(), 10) == 0) then
         v.SpawnRandomUnit()
       end
     end
