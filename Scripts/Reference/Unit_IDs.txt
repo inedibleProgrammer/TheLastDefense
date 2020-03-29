@@ -1,0 +1,467 @@
+unitID  Unit
+
+Hamg    HeroArchMage
+Hmkg    HeroMountainKing
+Hpal    HeroPaladin
+hfoo    Footman
+hgry    GryphonRider
+hgyr    Gyrocopter
+hkni    Knight
+hmil    Militia
+hmpr    Priest
+hmtm    MortarTeam
+hmtt    mortartank
+hpea    Peasant
+hrif    Rifleman
+hsor    Sorceress
+hwat    WaterElemental
+hwt2    WaterElemental level 2
+hwt3    WaterElemental level 3
+halt    AltarofKings
+harm    Workshop
+hars    ArcaneSanctum
+hbar    HumanBarracks
+hbla    Blacksmith
+hcas    Castle
+hctw    CannonTower
+hgra    GryphonAviary
+hgtw    GuardTower
+hhou    Farm
+hkee    Keep
+hlum    LumberMill
+htow    TownHall
+hwtw    Scout Tower
+Obla    HeroBladeMaster
+Ofar    HeroFarSeer
+Otch    HeroTaurenChieftain
+ocat    Catapult
+odoc    WitchDoctor
+oeye    SentryWard
+ogru    Grunt
+ohun    HeadHunter
+ohwd    Healing Ward
+okod    KodoBeast
+opeo    Peon
+orai    WolfRider
+oshm    Shaman
+osw1    spirit wolf level 1
+osw2    spirit wolf level 2
+osw3    spirit wolf level 3
+otau    Tauren
+otot    StasisTrapward
+owyv    WyvernRider
+oalt    AltarofStorms
+obar    Barracks
+obea    Beastiary
+ofor    Forge
+ofrt    Fortress
+ogre    GreatHall
+osld    SpiritLodge
+ostr    Stronghold
+otrb    OrcBurrow
+otto    Tauren Totem
+owtw    WatchTower
+Edem    HeroDemonHunter
+Edmm    HeroDemonHunterMorph
+Ekee    HeroKeeperoftheGrove
+Emoo    HeroMoonPriestess
+earc    Archer
+ebal    Ballista
+echm    Chimaera
+edcm    DruidoftheClawMorph
+edoc    DruidoftheClaw
+edot    DruidoftheTalon
+edry    Dryad
+edtm    DruidoftheTalonMorph
+efon    Ent
+ehip    Hippogryph
+ehpr    Hippogryph Rider
+esen    Huntress
+ewsp    Wisp
+eaoe    AncientofLore
+eaom    AncientofWar
+eaow    AncientofWind
+eate    AltarofElders
+edob    HuntersHall
+edos    ChimaeraRoost
+egol    EntangledGoldMine
+emow    MoonWell
+etoa    TreeofAges
+etoe    TreeofEternity
+etol    TreeofLife
+etrp    Ancient Protector
+Udea    HeroDeathKnight
+Udre    HeroDreadLord
+Ulic    HeroLich
+uabo    Abomination
+uaco    Acolyte
+uban    Banshee
+ucry    CryptFiend
+ufro    FrostWyrm
+ugar    Gargoyle
+ugho    Ghoul
+ugrm    GargoyleMorphed
+umtw    MeatWagon
+unec    Necromancer
+uplg    PlagueWard
+ushd    Shade
+uske    SkeletonWarrior
+uaod    AltarofDarkness
+ubon    Boneyard
+ugol    UndeadGoldMine
+ugrv    Graveyard
+unp1    Halls of the Dead
+unp2    Black Citadel
+unpl    Necropolis
+usap    SacrificialPit
+usep    Crypt
+uslh    Slaughterhouse
+utod    TempleoftheDamned
+uzg1    Ziggurat Upgrade
+uzig    Ziggurat
+nadk    blue drake
+nadr    blue dragon
+nadw    blue dragon whelp
+narg    battle golem
+nass    assassin
+nbal    Doom Guard
+nban    bandit
+nbdk    black drake
+nbdr    black whelp
+nbld    bandit lord
+nbrg    brigand
+nbwm    black dragon
+nbzd    bronze dragon
+nbzk    bronze drake
+nbzw    bronze dragon whelp
+ncea    CentaurArcher
+ncen    Centaur outrunner
+ncer    centaur drudge
+ncim    Centaur impaler
+ncks    centaur sorceror
+ncnk    centaur khan
+ndtb    dark troll berserker
+ndth    dark troll high priest
+ndtp    dark troll shadow priest
+ndtr    darkTroll
+ndtt    darkTrollTrapper
+ndtw    darkTrollwarlord
+nelb    berserk elemental
+nele    enraged elemental
+nenc    corrupted ent
+nenf    enforcer
+nenp    poison ent
+nepl    plague ent
+nfel    felhound
+nfra    Furbolg Ancient
+nfrb    Furbolg Tracker
+nfre    Furbolg Elder Shaman
+nfrg    Furbolg Champion
+nfrl    Furbolg
+nfrp    Furbolg Panda
+nfrs    Furbolg Shaman
+nfsh    forest troll high priest
+nfsp    forest troll shadow priest
+nftb    forest troll berserker
+nftk    ForestTrollKing
+nftr    ForestTroll
+nftt    ForestTrollTrapper
+ngdk    green drake
+nggr    granite golem
+ngh1    ghost
+ngh2    wraith
+ngir    goblin shredder
+nglm    goblin land mine
+ngna    Gnoll Poacher
+ngnb    gnoll brute
+ngno    Gnoll Robber
+ngns    Gnoll Assassin
+ngnv    gnoll king
+ngnw    gnoll warden
+ngrd    green dragon
+ngrk    mud golem
+ngrw    green dragon whelp
+ngsp    GoblinSapper
+ngst    rock golem
+nhar    Harpy Scout
+nhdc    deceiver
+nhfp    fallen priest
+nhhr    heretic
+nhrh    harpy hag
+nhrq    harpy queen
+nhrr    harpy rogue
+nhrw    harpy witch
+ninf    Infernal
+nith    ice troll high priest
+nitp    ice troll shadow priest
+nitr    IceTroll
+nits    ice troll berserker
+nitt    ice troll trapper
+nitw    ice troll warlord
+nkob    Kobold
+nkog    Kobold Geomancer
+nkol    kobold leader
+nkot    kobold tunneler
+nltl    lightning lizard
+nmfs    murloc flesheater
+nmmu    murloc mutant
+nmpg    murloc plaguebearer
+nmrl    murloc fisherman
+nmrm    murloc nightcrawler
+nmrr    murloc huntsman
+nnwa    nerubian warrior
+nnwl    nerubian webspinner
+nnwq    nerubian queen
+nnwr    nerubian seer
+nnws    nerubian spider lord
+nogl    ogre lord
+nogm    ogre mauler
+nogr    Ogre Warrior
+nomg    ogre magi
+nowb    owlbear
+nowe    enraged owlbear
+nowk    berserk owlbear
+nqbh    quillboar hunter
+nrdk    Red Dragon Whelp
+nrdr    Red Drake
+nrog    rogue
+nrvd    death revenant
+nrvf    fire revenant
+nrvi    ice revenant
+nrvl    lightning revenant
+nrvs    frost revenant
+nrwm    Red Dragon
+nrzb    razormane brute
+nrzg    razormane chieftain
+nrzm    razormane medicine man
+nrzs    razormane scout
+nrzt    quillboar
+nsat    Satyr Trickster
+nsbm    brood mother
+nsgg    siege golem
+nsgt    giant spider
+nska    skeletal archer
+nske    SkeletonWarrior
+nskf    burning archer
+nskg    giant SkeletonWarrior
+nskm    skeletal marksman
+nslf    sludge flinger
+nslh    salamander hatchling
+nsll    salamander lord
+nslm    sludge minion
+nsln    sludge monstrosity
+nslr    salamander
+nslv    salamander vizier
+nspb    black spider
+nspd    spiderling
+nspg    green spider
+nspp    spirit pig
+nspr    spider
+nsqa    ancient sasquatch
+nsqe    elder sasquatch
+nsqo    sasquatch oracle
+nsqt    sasquatch
+nssp    spitting spider
+nsth    satyr hellcaller
+nstl    satyr soulstealer
+nsts    satyr shadowdancer
+nstw    storm wyrm
+nsty    satyr
+nthl    thunder lizard
+nwen    Wendigo
+nwiz    wizard
+nwld    dire wolf
+nwlg    giant wolf
+nwlt    timber wolf
+nwna    ancient wendigo
+nwnr    elder wendigo
+nwns    wendigo shaman
+nwrg    war golem
+nws1    dragon hawk
+nwwd    white dire wolf
+nwwf    white wolf
+nwwg    giant white wolf
+nwzd    dark wizard
+nwzg    renegade wizard
+nwzr    rogue wizard
+nzep    GoblinZeppelin
+nzom    Zombie
+nder    deer
+ndog    Dog
+now2    owlscout 2
+now3    owlscout 3
+nowl    owlscout
+npig    Pig
+nrat    Rat
+nsea    Seal
+nshe    Sheep
+nshf    Flying Sheep
+nvil    Villager Man
+nvk2    Villager Kid 2
+nvl2    Villager Man 2
+nvlk    Villager Kid
+nvlw    Villager Woman
+nvul    Vulture
+ncb0    city building
+ncb1    city building
+ncb2    city building
+ncb3    city building
+ncb4    city building
+ncb5    city building
+ncb6    city building
+ncb7    city building
+ncb8    city building
+ncb9    city building
+ncba    city building
+ncbb    city building
+ncbc    city building
+ncbd    city building
+ncbe    city building
+ncbf    city building
+ncnt    Centaur Tent
+ncop    Circle Of Power
+ncp2    Circle Of Power medium
+ncp3    Circle Of Power large
+nct1    Centaur Tent
+nct2    Centaur Tent
+ndrg    Dragon Roost green
+ndrk    Dragon Roost black
+ndrr    Dragon Roost red
+ndru    Dragon Roost blue
+ndrz    Dragon Roost bronze
+nfh0    Forest Troll Hut 0
+nfh1    Forest Troll Hut 1
+nfoh    Fountain of Health
+nfr1    Furbolg Hut 1
+nfr2    Furbolg Hut 2
+ngad    Goblin Ammo Dump
+ngme    goblin merchant
+ngnh    Gnoll Hut
+ngni    Infected Granary
+ngol    GoldMine
+ngt2    Gnoll Hut
+ngwr    grain warehouse
+nhns    harpy nest
+nmer    MercenaryCamp L
+nmh0    Murloc Hut 0
+nmh1    Murloc Hut 1
+nmoo    Fountain of Life
+nmr0    MercenaryCamp V
+nmr2    MercenaryCamp F
+nmr3    MercenaryCamp W
+nmr4    MercenaryCamp B
+nmr5    MercenaryCamp A
+nmr6    MercenaryCamp C
+nmr7    MercenaryCamp N
+nmr8    MercenaryCamp Y
+nmr9    MercenaryCamp X
+nmra    MercenaryCamp D
+nmrb    MercenaryCamp G
+nnzg    nerubian ziggurat
+nten    Tent
+nth0    Ice Troll Hut 0
+nth1    Ice Troll Hut 1
+ntn2    Tent
+ntnt    Tauren Tent
+ntt2    Tauren Tent
+nwgt    WayGate
+Ecen    cenarius
+Efur    furion
+Eidm    illidan demon form
+Eill    illidan
+Eilm    illidanmorphed
+Ekgg    HeroKeeperoftheGrove ghost
+Etyr    Tyrande
+Hant    antonidus
+Harf    arthas w/ frostmourne
+Hart    arthas
+Hjai    jaina
+Hmbr    muradin bronzebeard
+Hpb1    paladin boss 1
+Hpb2    paladin boss 2
+Huth    uther
+Hvwd    sylvanas windrunner
+Nbbc    blackrock blademaster
+Nman    mannoroth
+Npld    pit lord
+Ocbh    cairne bloodhoof
+Ogrh    grom hellscream
+Opgh    possessed grom hellscream
+Otcc    cairne bloodhoof cinematic
+Othr    thrall
+Uclc    kelthuzadlich cinematic
+Uear    evil arthas
+Uktl    kelthuzadlich
+Umal    malganis
+Utic    tichondrius
+Uwar    archimonde
+eshd    shandris
+hcth    the captain
+hhdl    headless rider
+hhes    high elven swordsman
+nbsp    battleship
+nchg    chaos grunt
+nchr    ChaosWolfRider
+nchw    ChaosWarlock
+nckb    Chaos Kodo Beast
+ncpn    Chaos Peon
+nemi    emissary
+nhea    high elven archer
+nhef    high elven female
+nhem    high elven male
+nmdm    medivh morphed
+nmed    medivh
+nser    searinox
+nssn    night elf assassin
+nthr    tharifas
+nw2w    War2Warlock
+nwat    watcher
+oosc    kodo beast (riderless)
+owar    orc warchief
+ownr    wyvern
+uabc    Abomination cinematic
+uktg    kelthuzadghost
+uktn    kelthuzadnecro
+uswb    sylvanus banshee
+nbfl    Fountain of Blood
+nbsm    book of summoning pedestal
+nbwd    barrow den
+ncap    corrupted Ancient Protector
+ncaw    corrupted AncientofWar
+ncmw    corrupted MoonWell
+ncta    corrupted TreeofAges
+ncte    corrupted TreeofEternity
+nctl    corrupted TreeofLife
+ndfl    Defiled Fountain of Life
+ndgt    dalaran guard tower
+ndmg    demon gate
+ndrb    Dragon Building
+nef0    elven farm
+nef1    elven farm
+nef2    elven farm
+nef3    elven farm
+nef4    elven farm
+nef5    elven farm
+nef6    elven farm
+nef7    elven farm
+nefm    elven farm
+negf    elven guard fire tower
+negm    elven guard magic tower
+negt    elven guard tower
+nfrm    frostmourne pedestal
+ngob    gemstone obelisk
+nhcn    horn of cenarius pedestal
+nheb    High Elven Barracks
+nmgv    magic vault
+npgf    Pig Farm
+nshr    shrine
+nwc1    wyvern cage 1
+nwc2    wyvern cage 2
+ocbw    Chaos OrcBurrow
+zcso    chaos space orc
+zhyd    hydralisk
+zjug    orc juggernaut
+zmar    Marine
+zshv    shoveler
+zsmc    sammy cube
+zzrg    zergling

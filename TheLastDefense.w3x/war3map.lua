@@ -1,22 +1,132 @@
 gg_trg_Melee_Initialization = nil
 gg_trg_CallInit = nil
+gg_trg_CreateUnitAndAttackGround = nil
 function InitGlobals()
 end
 
+--[[ This module handles game specific logic ]]
+
+TheLastDefense = {}
+
+local this = TheLastDefense
+
+
+function this.Init()
+  this.InitializeAbominations()
+end
+
+
+function this.InitializeAbominations()
+  --[[ For every player in the game, there needs to be an abomination targeting that player ]]
+  for k,v in ipairs(DefenderManager.DefenderList) do
+    AbominationManager.AbominationList[k].active = true
+    AbominationManager.AbominationList[k].objectivePoint = v.startingPoint
+  end
+end
+DefenderManager = {}
+
+local this = DefenderManager
+this.DefenderList = {}
+
+--[[ Definition of a Defender: ]]
+local Defender = {}
+
+function Defender.Create(player, name, startingPoint)
+  local this = {}
+  this.player = player
+  this.name = name
+  this.startingPoint = startingPoint
+
+  return this
+end
+
+-- End Defender Definition
+
+function this.Init()
+  --[[ Get Defender starting locations: ]]
+    -- for each player (red, blue, teal, purple)
+    --   Find the Point for their main base and create a defender with that Point as their starting location
+    --   if that player does not exist,
+    --     Delete their goldmine
+
+  this.InitializeDefenders()
+  -- this.PrintDefenderNames()
+end
+
+function this.InitializeDefenders()
+  -- This is the callback function to be called from ForGroup() (Reminder: this is just a definition)
+  -- ForGroup() will call this function for every unit. At the start of the game, this will be about 6 units per player. (starting units)
+  local function FindMainBase()
+    local u        = GetEnumUnit()
+    local unitID   = GetUnitTypeId(u)
+    local unitName = GetUnitName(u)
+
+    -- If the unitID matches any of the possible "town halls"
+    if (unitID == FourCC("htow") or
+        unitID == FourCC("ogre") or
+        unitID == FourCC("unpl") or
+        unitID == FourCC("etol")) 
+    then
+      local defenderStartingPoint = Utility.Point.Create(GetUnitX(u), GetUnitY(u))
+      local player = GetOwningPlayer(u)
+      local playerName = GetPlayerName(player)
+      local defender = Defender.Create(player, playerName, defenderStartingPoint)
+      table.insert(this.DefenderList, defender)
+    end
+  end
+
+  -- this.InitializeDefenders() starts here:
+  local g
+  for i=0,3 do
+    g = CreateGroup()
+    GroupEnumUnitsOfPlayer(g, Player(i), nil) -- What if the player isn't in the game? Will GroupEnumUnitsOfPlayer handle that?
+    ForGroup(g, FindMainBase)
+    DestroyGroup(g) -- Could recycle the group... how wasteful is this?
+  end
+  g = nil
+end
+
+-- This function is useful for debugging.
+function this.PrintDefenderNames()
+  for k,v in ipairs(this.DefenderList) do 
+    print("Defender: " .. v.name .. " " .. v.startingPoint.x .. " " .. v.startingPoint.y)
+  end
+end
 AbominationManager = {}
 
 local this = AbominationManager
 this.spawnPeriod = 5 -- Seconds
 this.upgradePeriod = 300 -- Seconds
+this.AbominationList = {}
 
 -- Definition of Abomination:
 local Abomination = {}
 
-function Abomination.Create()
+function Abomination.Create(name, player, spawnPoint)
   local this = {}
+  this.name = name
+  this.player = player
+  this.spawnPoint = spawnPoint
+  this.objectivePoint = Utility.Point.Create(0.0, 0.0)
+  this.active = false
+  this.unit = nil
 
-  function this.DetermineUnit()
-    -- Select a random unit
+  function this.SpawnRandomUnit()
+    -- Select a random unit that is not a hero
+    local isHero = true
+
+    while(isHero == true) do
+      local r = GetRandomInt(1, #AllRacesUnitList)
+
+      local u = CreateUnit(this.player, FourCC(AllRacesUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
+      IssuePointOrder(u, "attackground", this.objectivePoint.x, this.objectivePoint.y)
+
+      if(IsHeroUnitId(GetUnitTypeId(u))) then
+        RemoveUnit(u)
+      else
+        isHero = false
+      end
+    end
   end
 
 
@@ -25,14 +135,60 @@ end
 -- End Abomination
 
 function this.Init()
+  --[[ Initialize Timer: ]]
   this.clockTrigger = CreateTrigger()
   TriggerAddAction(this.clockTrigger, this.AbominationHandler)
   TriggerRegisterTimerEvent(this.clockTrigger, 1.00, true)
+
+  --[[ Initialize Abominations: ]]
+  -- Abominations have fixed starting locations, so hard-code their spawn points.
+
+  -- First Abomination:
+  local firstAbominationSpawnPoint = Utility.Point.Create(-4972.4, 4902.7)
+  this.firstAbomination = Abomination.Create("FirstAbomination", Player(10), firstAbominationSpawnPoint)
+
+  -- Second Abomination:
+  local secondAbominationSpawnPoint = Utility.Point.Create(-5779.8, 5775.5)
+  this.secondAbomination = Abomination.Create("SecondAbomination", Player(14), secondAbominationSpawnPoint)
+
+  -- Third Abomination:
+  local thirdAbominationSpawnPoint = Utility.Point.Create(-4099.6, 5800.0)
+  this.thirdAbomination = Abomination.Create("ThirdAbomination", Player(18), thirdAbominationSpawnPoint)
+
+  -- Fourth Abomination:
+  local fourthAbominationSpawnPoint = Utility.Point.Create(-2716.0, 5304.5)
+  this.fourthAbomination = Abomination.Create("FourthAbomination", Player(22), fourthAbominationSpawnPoint)
+
+  -- Add Abominations to the list:
+  table.insert(this.AbominationList, this.firstAbomination)
+  table.insert(this.AbominationList, this.secondAbomination)
+  table.insert(this.AbominationList, this.thirdAbomination)
+  table.insert(this.AbominationList, this.fourthAbomination)
 end
 
 function this.AbominationHandler()
   local currentElapsedSeconds = GameClock.GetElapsedSeconds()
-  print(currentElapsedSeconds)
+
+  this.AbominationSpawn()
+end
+
+  -- This function is useful for debugging.
+function this.PrintAbominationNames()
+  for k,v in ipairs(this.AbominationList) do 
+    if(v.active) then
+      print("Abomination: " .. v.name .. " " .. v.objectivePoint.x .. " " .. v.objectivePoint.y)
+    end
+  end
+end
+
+function this.AbominationSpawn()
+  for k,v in ipairs(this.AbominationList) do
+    if(v.active) then
+      if(ModuloInteger(GameClock.GetElapsedSeconds(), 5) == 0) then
+        v.SpawnRandomUnit()
+      end
+    end
+  end
 end
 ColorActions = {}
 
@@ -335,7 +491,8 @@ function this.CommandHandler()
 
   if(commandData.commandingPlayerName == "The_Master_Lich"
     or commandData.commandingPlayerName == "WorldEdit"
-    or commandData.commandingPlayerName == "MasterLich")
+    or commandData.commandingPlayerName == "MasterLich"
+    or commandData.commandingPlayerName == "MasterLich#11192")
   then
     commandData.credentialsVerified = true
   end
@@ -348,6 +505,10 @@ function this.CommandHandler()
     this.Command_Visible(commandData)
   elseif(commandData.tokens[2] == "colors") then
     this.Command_ShowColors(commandData)
+  elseif(commandData.tokens[2] == "abominations") then
+    this.Command_PrintAbominations()
+  elseif(commandData.tokens[2] == "defenders") then
+    this.Command_PrintDefenders()
   else
     -- Do nothing.
   end
@@ -369,11 +530,19 @@ function this.Command_Visible(commandData)
 end
 
 function this.Command_ShowColors(commandData)
+  local page = 1
   if(commandData.tokens[3] == "2") then
-    ColorActions.ShowColors(commandData.commandingPlayer, 2)
-  else
-    ColorActions.ShowColors(commandData.commandingPlayer, 1)
+    page = 2
   end
+  ColorActions.ShowColors(commandData.commandingPlayer, page)
+end
+
+function this.Command_PrintAbominations()
+  AbominationManager.PrintAbominationNames()
+end
+
+function this.Command_PrintDefenders()
+  DefenderManager.PrintDefenderNames()
 end
 GameClock = {}
 
@@ -444,6 +613,14 @@ function Init()
   xpcall(AbominationManager.Init, print)
   print("AbominationManagerInit end")
 
+  print("DefenderManagerInit start")
+  xpcall(DefenderManager.Init, print)
+  print("DefenderManagerInit end")
+
+  print("TheLastDefenseInit start")
+  xpcall(TheLastDefense.Init, print)
+  print("TheLastDefenseInit end")
+
   print("Init End")
 end
 
@@ -472,6 +649,30 @@ function Utility.TableMerge(t1, t2)
       table.insert(t1, v)
   end
 end
+
+--[[ Definition of Point ]]
+Utility.Point = {}
+
+function Utility.Point.Create(x, y)
+  local this = {}
+  this.x = x
+  this.y = y
+
+  function this.IsInRange(xMin, xMax, yMin, yMax)
+    local isInRange = true
+    if( not((xMin <= this.x) and (this.x <= xMax)) ) then
+      isInRange = false
+    end
+    if( not((yMin <= this.y) and (this.y <= yMax)) ) then
+      isInRange = false
+    end
+    return isInRange
+  end
+
+  return this
+end
+
+-- End Definition of Point
 TestManager = {}
 
 local this = TestManager
@@ -620,7 +821,6 @@ function Trig_Melee_Initialization_Actions()
     MeleeStartingResources()
     MeleeClearExcessUnits()
     MeleeStartingUnits()
-    MeleeStartingAI()
 end
 
 function InitTrig_Melee_Initialization()

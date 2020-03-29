@@ -20,7 +20,8 @@ function this.CommandHandler()
 
   if(commandData.commandingPlayerName == "The_Master_Lich"
     or commandData.commandingPlayerName == "WorldEdit"
-    or commandData.commandingPlayerName == "MasterLich")
+    or commandData.commandingPlayerName == "MasterLich"
+    or commandData.commandingPlayerName == "MasterLich#11192")
   then
     commandData.credentialsVerified = true
   end
@@ -33,6 +34,10 @@ function this.CommandHandler()
     this.Command_Visible(commandData)
   elseif(commandData.tokens[2] == "colors") then
     this.Command_ShowColors(commandData)
+  elseif(commandData.tokens[2] == "abominations") then
+    this.Command_PrintAbominations()
+  elseif(commandData.tokens[2] == "defenders") then
+    this.Command_PrintDefenders()
   else
     -- Do nothing.
   end
@@ -54,9 +59,17 @@ function this.Command_Visible(commandData)
 end
 
 function this.Command_ShowColors(commandData)
+  local page = 1
   if(commandData.tokens[3] == "2") then
-    ColorActions.ShowColors(commandData.commandingPlayer, 2)
-  else
-    ColorActions.ShowColors(commandData.commandingPlayer, 1)
+    page = 2
   end
+  ColorActions.ShowColors(commandData.commandingPlayer, page)
+end
+
+function this.Command_PrintAbominations()
+  AbominationManager.PrintAbominationNames()
+end
+
+function this.Command_PrintDefenders()
+  DefenderManager.PrintDefenderNames()
 end

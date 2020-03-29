@@ -23,3 +23,27 @@ function Utility.TableMerge(t1, t2)
       table.insert(t1, v)
   end
 end
+
+--[[ Definition of Point ]]
+Utility.Point = {}
+
+function Utility.Point.Create(x, y)
+  local this = {}
+  this.x = x
+  this.y = y
+
+  function this.IsInRange(xMin, xMax, yMin, yMax)
+    local isInRange = true
+    if( not((xMin <= this.x) and (this.x <= xMax)) ) then
+      isInRange = false
+    end
+    if( not((yMin <= this.y) and (this.y <= yMax)) ) then
+      isInRange = false
+    end
+    return isInRange
+  end
+
+  return this
+end
+
+-- End Definition of Point

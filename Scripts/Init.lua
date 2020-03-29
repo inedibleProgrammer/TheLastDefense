@@ -25,5 +25,13 @@ function Init()
   xpcall(AbominationManager.Init, print)
   print("AbominationManagerInit end")
 
+  print("DefenderManagerInit start")
+  xpcall(DefenderManager.Init, print)
+  print("DefenderManagerInit end")
+
+  print("TheLastDefenseInit start")
+  xpcall(TheLastDefense.Init, print)
+  print("TheLastDefenseInit end")
+
   print("Init End")
 end
