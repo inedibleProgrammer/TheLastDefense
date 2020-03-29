@@ -3,6 +3,37 @@ gg_trg_CallInit = nil
 function InitGlobals()
 end
 
+AbominationManager = {}
+
+local this = AbominationManager
+this.spawnPeriod = 5 -- Seconds
+this.upgradePeriod = 300 -- Seconds
+
+-- Definition of Abomination:
+local Abomination = {}
+
+function Abomination.Create()
+  local this = {}
+
+  function this.DetermineUnit()
+    -- Select a random unit
+  end
+
+
+  return this
+end
+-- End Abomination
+
+function this.Init()
+  this.clockTrigger = CreateTrigger()
+  TriggerAddAction(this.clockTrigger, this.AbominationHandler)
+  TriggerRegisterTimerEvent(this.clockTrigger, 1.00, true)
+end
+
+function this.AbominationHandler()
+  local currentElapsedSeconds = GameClock.GetElapsedSeconds()
+  print(currentElapsedSeconds)
+end
 ColorActions = {}
 
 function ColorActions.ColorStringToNumber(color)
@@ -300,6 +331,14 @@ function this.CommandHandler()
   commandData.commandingPlayer = GetTriggerPlayer()
   commandData.commandingPlayerName = GetPlayerName(commandData.commandingPlayer)
   commandData.tokens = Utility.MySplit(commandData.message, " ")
+  commandData.credentialsVerified = false
+
+  if(commandData.commandingPlayerName == "The_Master_Lich"
+    or commandData.commandingPlayerName == "WorldEdit"
+    or commandData.commandingPlayerName == "MasterLich")
+  then
+    commandData.credentialsVerified = true
+  end
 
   if(commandData.tokens[2] == "time") then
     this.Command_Time(commandData)
@@ -324,17 +363,8 @@ function this.Command_Clear()
 end
 
 function this.Command_Visible(commandData)
-  local credentialsVerified = false
-
-  if(commandData.commandingPlayerName == "The_Master_Lich"
-    or commandData.commandingPlayerName == "WorldEdit")
-  then
-    credentialsVerified = true
-  end
-
-  if(credentialsVerified) then
+  if(commandData.credentialsVerified) then
     FogModifierStart(CreateFogModifierRect(commandData.commandingPlayer, FOG_OF_WAR_VISIBLE, GetWorldBounds(), true, true))
-    --CreateFogModifierRectBJ(true, commandData.commandingPlayer, FOG_OF_WAR_VISIBLE, GetPlayableMapRect())
   end
 end
 
@@ -352,6 +382,7 @@ local this = GameClock
 this.hours   = 0
 this.minutes = 0
 this.seconds = 0
+this.elapsedSeconds = 0
 
 function this.Init()
   this.clockTrigger = CreateTrigger()
@@ -371,6 +402,8 @@ function this.ClockHandler()
     this.hours = this.hours + 1
     this.minutes = 0
   end
+
+  this.elapsedSeconds = this.elapsedSeconds + 1
 end
 
 function this.GetTime()
@@ -380,18 +413,40 @@ function this.GetTime()
   t.seconds = this.seconds
   return t
 end
+
+function this.GetElapsedSeconds()
+  return this.elapsedSeconds
+end
 --[[
   The beginning of everything
 ]]
 
 function Init()
-  BJDebugMsg("Init Start")
-  GameClock.Init()
-  CommandManager.Init()
-  TestManager.Test_Points()
-  TestManager.Test_Units()
-  BJDebugMsg("Init End")
+  print("Init Start")
+
+  print("GameClockInit Start")
+  xpcall(GameClock.Init, print)
+  print("GameClockInit End")
+
+  print("CommandManagerInit Start")
+  xpcall(CommandManager.Init, print)
+  print("CommandManagerInit End")
+
+  print("UnitList_Init start")
+  xpcall(UnitList_Init, print)
+  print("UnitList_Init end")
+
+  -- print("TestManager TestHumanUnits start")
+  -- xpcall(TestManager.Test_HumanUnits, print)
+  -- print("TestManager TestHumanUnits end")
+
+  print("AbominationManagerInit start")
+  xpcall(AbominationManager.Init, print)
+  print("AbominationManagerInit end")
+
+  print("Init End")
 end
+
 Utility = {}
 
 function Utility.TriggerRegisterAllPlayersChat(which_trigger, message)
@@ -412,37 +467,114 @@ function Utility.MySplit(input_str, sep)
   return t
 end
 
-Utility.Point = {}
-
-function Utility.Point.Create(x, y)
-  local this = {}
-
-  this.x = x
-  this.y = y
-
-  return this
+function Utility.TableMerge(t1, t2)
+  for k,v in ipairs(t2) do
+      table.insert(t1, v)
+  end
 end
 TestManager = {}
 
 local this = TestManager
 
 
-function this.Test_Points()
-  local point1 = Utility.Point.Create(1, 2)
 
-  BJDebugMsg("(" .. point1.x .. "," .. point1.y ..")")
+function this.Test_HumanUnits()
+  for k,v in ipairs(AllRacesUnitList) do
+    CreateNUnitsAtLoc(1, FourCC(v), Player(0), GetRectCenter(GetPlayableMapRect()), bj_UNIT_FACING)
+  end
 end
 
-
-local TestUnitList = 
+-- CreateNUnitsAtLoc(1, FourCC(unit), Player(0), GetRectCenter(GetPlayableMapRect()), bj_UNIT_FACING)
+HumanUnitList = 
 {
   "hpea",
   "hfoo",
+  "hkni",
+  "hrif",
+  "hmtm",
+  "hgyr",
+  "hgry",
+  "hmpr",
+  "hsor",
+  "hmtt",
+  "hspt",
+  "hdhw",
+  "Hpal",
+  "Hamg",
+  "Hmkg",
+  "Hblm",
 }
 
-function this.Test_Units()
-  BJDebugMsg(math.random(1, #TestUnitList))
+OrcUnitList =
+{
+  "opeo",
+  "ogru",
+  "orai",
+  "otau",
+  "ohun",
+  "ocat",
+  "okod",
+  "owyv",
+  "otbr",
+  "odoc",
+  "oshm",
+  "ospw",
+  "Obla",
+  "Ofar",
+  "Otch",
+  "Oshd",
+}
+
+UndeadUnitList =
+{
+  "uaco",
+  "ushd",
+  "ugho",
+  "uabo",
+  "umtw",
+  "ucry",
+  "ugar",
+  "uban",
+  "unec",
+  "uobs",
+  "ufro",
+  "Udea",
+  "Ulic",
+  "Udre",
+  "Ucrl",
+}
+
+NightElfUnitList =
+{
+  "ewsp",
+  "earc",
+  "esen",
+  "edry",
+  "ebal",
+  "ehip",
+  "ehpr",
+  "echm",
+  "edot",
+  "edoc",
+  "emtg",
+  "efdr",
+  "Ekee",
+  "Emoo",
+  "Edem",
+  "Ewar",
+}
+
+AllRacesUnitList = {}
+
+
+function UnitList_Init()
+  -- Merge the four races into one table:
+  Utility.TableMerge(AllRacesUnitList, HumanUnitList)
+  Utility.TableMerge(AllRacesUnitList, OrcUnitList)
+  Utility.TableMerge(AllRacesUnitList, UndeadUnitList)
+  Utility.TableMerge(AllRacesUnitList, NightElfUnitList)
 end
+
 function CreateNeutralPassiveBuildings()
     local p = Player(PLAYER_NEUTRAL_PASSIVE)
     local u

@@ -5,6 +5,7 @@ local this = GameClock
 this.hours   = 0
 this.minutes = 0
 this.seconds = 0
+this.elapsedSeconds = 0
 
 function this.Init()
   this.clockTrigger = CreateTrigger()
@@ -24,6 +25,8 @@ function this.ClockHandler()
     this.hours = this.hours + 1
     this.minutes = 0
   end
+
+  this.elapsedSeconds = this.elapsedSeconds + 1
 end
 
 function this.GetTime()
@@ -35,7 +38,5 @@ function this.GetTime()
 end
 
 function this.GetElapsedSeconds()
-  local hoursToSeconds = this.hours * 3600
-  local minutesToSeconds = this.minutes * 60
-  local elapsedSeconds = hoursToSeconds + minutesToSeconds + this.seconds
+  return this.elapsedSeconds
 end

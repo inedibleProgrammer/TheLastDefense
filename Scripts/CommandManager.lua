@@ -48,8 +48,6 @@ function this.Command_Clear()
 end
 
 function this.Command_Visible(commandData)
-  local credentialsVerified = false
-
   if(commandData.credentialsVerified) then
     FogModifierStart(CreateFogModifierRect(commandData.commandingPlayer, FOG_OF_WAR_VISIBLE, GetWorldBounds(), true, true))
   end

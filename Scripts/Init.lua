@@ -22,7 +22,7 @@ function Init()
   -- print("TestManager TestHumanUnits end")
 
   print("AbominationManagerInit start")
-  xpcall(AbominationManager.Init, print())
+  xpcall(AbominationManager.Init, print)
   print("AbominationManagerInit end")
 
   print("Init End")
