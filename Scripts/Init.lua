@@ -17,6 +17,10 @@ function Init()
   xpcall(UnitList_Init, print)
   print("UnitList_Init end")
 
+  print("UpgradeList_Init start")
+  xpcall(UpgradeList_Init, print)
+  print("UpgradeList_Init end")
+
   -- print("TestManager TestHumanUnits start")
   -- xpcall(TestManager.Test_HumanUnits, print)
   -- print("TestManager TestHumanUnits end")

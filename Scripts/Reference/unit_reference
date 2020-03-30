@@ -31,3 +31,10 @@ native GetUnitCurrentOrder          takes unit whichUnit returns integer
 
 native          SetUnitVertexColor  takes unit whichUnit, integer red, integer green, integer blue, integer alpha returns nothing
 native UnitAddIndicator             takes unit whichUnit, integer red, integer green, integer blue, integer alpha returns nothing
+
+
+-- Example:
+KillUnit(GroupPickRandomUnit(udg_randomUnitGroup)) -- blizzard.j
+print(GetUnitCurrentOrder(u))
+
+SetPlayerTechResearchedSwap(FourCC("Rhme"), 3, Player(0))

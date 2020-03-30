@@ -15,5 +15,6 @@ function this.InitializeAbominations()
   for k,v in ipairs(DefenderManager.DefenderList) do
     AbominationManager.AbominationList[k].active = true
     AbominationManager.AbominationList[k].objectivePoint = v.startingPoint
+    AbominationManager.AbominationList[k].targetPlayer = v.player
   end
 end

@@ -1,9 +1,123 @@
 gg_trg_Melee_Initialization = nil
 gg_trg_CallInit = nil
 gg_trg_CreateUnitAndAttackGround = nil
+gg_trg_KillRandomUnitInGroup = nil
+gg_trg_Upgrades = nil
+gg_trg_MakeShopsInvulnerable = nil
+gg_unit_hvlt_0023 = nil
+gg_unit_ovln_0024 = nil
+gg_unit_eden_0025 = nil
+gg_unit_utom_0026 = nil
 function InitGlobals()
 end
 
+HumanUpgradeList =
+{
+  "Rhan",
+  "Rhpm",
+  "Rhrt",
+  "Rhra",
+  "Rhcd",
+  "Rhss",
+  "Rhde",
+  "Rhfc",
+  "Rhfl",
+  "Rhgb",
+  "Rhfs",
+  "Rhlh",
+  "Rhac",
+  "Rhme",
+  "Rhar",
+  "Rhri",
+  "Rhse",
+  "Rhpt",
+  "Rhst",
+  "Rhhb",
+  "Rhla",
+  "Rhsb",
+}
+
+OrcUpgradeList = 
+{
+  "Ropm",
+  "Robk",
+  "Robs",
+  "Robf",
+  "Roen",
+  "Rovs",
+  "Rolf",
+  "Ropg",
+  "Rows",
+  "Rorb",
+  "Rost",
+  "Rost",
+  "Rosp",
+  "Rowt",
+  "Roar",
+  "Rome",
+  "Rora",
+  "Rotr",
+  "Rwdm",
+  "Rowd",
+}
+
+UndeadUpgradeList = 
+{
+  "Rupm",
+  "Ruba",
+  "Rubu",
+  "Ruac",
+  "Rura",
+  "Rucr",
+  "Rusp",
+  "Rupc",
+  "Ruex",
+  "Rufb",
+  "Rugf",
+  "Rune",
+  "Rusl",
+  "Rusm",
+  "Rusf",
+  "Ruar",
+  "Rume",
+  "Ruwb",
+}
+
+NightElfUpgradeList =
+{
+  "Resi",
+  "Repm",
+  "Recb",
+  "Redc",
+  "Redt",
+  "Rehs",
+  "Reht",
+  "Reib",
+  "Reeb",
+  "Reec",
+  "Remk",
+  "Rema",
+  "Renb",
+  "Rerh",
+  "Rers",
+  "Resc",
+  "Resm",
+  "Resw",
+  "Reuv",
+  "Remg",
+  "Repb",
+  "Rews",
+}
+
+AllRacesUpgradeList = {}
+
+function UpgradeList_Init()
+   -- Merge the four races into one table:
+   Utility.TableMerge(AllRacesUpgradeList, HumanUpgradeList)
+   Utility.TableMerge(AllRacesUpgradeList, OrcUpgradeList)
+   Utility.TableMerge(AllRacesUpgradeList, UndeadUpgradeList)
+   Utility.TableMerge(AllRacesUpgradeList, NightElfUpgradeList)
+end
 --[[ This module handles game specific logic ]]
 
 TheLastDefense = {}
@@ -21,6 +135,7 @@ function this.InitializeAbominations()
   for k,v in ipairs(DefenderManager.DefenderList) do
     AbominationManager.AbominationList[k].active = true
     AbominationManager.AbominationList[k].objectivePoint = v.startingPoint
+    AbominationManager.AbominationList[k].targetPlayer = v.player
   end
 end
 DefenderManager = {}
@@ -50,7 +165,6 @@ function this.Init()
     --     Delete their goldmine
 
   this.InitializeDefenders()
-  -- this.PrintDefenderNames()
 end
 
 function this.InitializeDefenders()
@@ -97,38 +211,81 @@ AbominationManager = {}
 local this = AbominationManager
 this.spawnPeriod = 5 -- Seconds
 this.upgradePeriod = 300 -- Seconds
+this.healthMultiplier = 200 -- HP
+this.level = 1 -- Scale monster spawning
 this.AbominationList = {}
 
 -- Definition of Abomination:
 local Abomination = {}
 
-function Abomination.Create(name, player, spawnPoint)
+function Abomination.Create(name, player, targetPlayer, spawnPoint)
   local this = {}
   this.name = name
-  this.player = player
+  this.player = player -- The actual Player() of the abomination
   this.spawnPoint = spawnPoint
+  this.targetPlayer = targetPlayer -- The player to be targeted by the abomination.
   this.objectivePoint = Utility.Point.Create(0.0, 0.0)
   this.active = false
   this.unit = nil
+  this.unitGroup = CreateGroup()
+  this.upgradesFinished = false
 
-  function this.SpawnRandomUnit()
+  function this.SpawnRandomUnit(level)
+    local function IsIdle()
+      local idleUnit = GetEnumUnit()
+      if(GetUnitCurrentOrder(idleUnit) == 0) then
+        local g = CreateGroup()
+        GroupEnumUnitsOfPlayer(g, this.targetPlayer, nil)
+        local u = GroupPickRandomUnit(g)
+        IssueTargetOrder(idleUnit, "attack", u)
+        DestroyGroup(g)
+        g = nil
+      end
+    end
+
     -- Select a random unit that is not a hero
     local isHero = true
+    local levelRestraint = true
+    local hundredAttempts = 100
 
-    while(isHero == true) do
-      local r = GetRandomInt(1, #AllRacesUnitList)
+    while( ((isHero == true) or (levelRestraint == true)) and (hundredAttempts >= 0) ) do
+      local r = GetRandomInt(1, #AllUnitList)
 
-      local u = CreateUnit(this.player, FourCC(AllRacesUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
-      IssuePointOrder(u, "attackground", this.objectivePoint.x, this.objectivePoint.y)
+      local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
+      IssuePointOrder(u, "attack", this.objectivePoint.x, this.objectivePoint.y)
+      GroupAddUnit(this.unitGroup, u)
 
       if(IsHeroUnitId(GetUnitTypeId(u))) then
         RemoveUnit(u)
       else
         isHero = false
       end
+
+      if(BlzGetUnitMaxHP(u) > (level * AbominationManager.healthMultiplier)) then
+        RemoveUnit(u)
+      else
+        levelRestraint = false
+      end
+
+      if( (level == 5) and not(this.upgradesFinished) ) then
+        AbominationManager.healthMultiplier = 600
+        this.DoUpgrades()
+      end
+
+      hundredAttempts = hundredAttempts - 1
     end
+
+    ForGroup(this.unitGroup, IsIdle)
+
   end
 
+  function this.DoUpgrades()
+    this.upgradesFinished = true
+
+    for k,v in ipairs(AllRacesUpgradeList) do
+      AddPlayerTechResearched(this.player, FourCC(v), 3)
+    end
+  end
 
   return this
 end
@@ -145,19 +302,19 @@ function this.Init()
 
   -- First Abomination:
   local firstAbominationSpawnPoint = Utility.Point.Create(-4972.4, 4902.7)
-  this.firstAbomination = Abomination.Create("FirstAbomination", Player(10), firstAbominationSpawnPoint)
+  this.firstAbomination = Abomination.Create("FirstAbomination", Player(10), Player(0), firstAbominationSpawnPoint) -- Player(0) is temporary and will be overwritten.
 
   -- Second Abomination:
   local secondAbominationSpawnPoint = Utility.Point.Create(-5779.8, 5775.5)
-  this.secondAbomination = Abomination.Create("SecondAbomination", Player(14), secondAbominationSpawnPoint)
+  this.secondAbomination = Abomination.Create("SecondAbomination", Player(14), Player(0), secondAbominationSpawnPoint)
 
   -- Third Abomination:
   local thirdAbominationSpawnPoint = Utility.Point.Create(-4099.6, 5800.0)
-  this.thirdAbomination = Abomination.Create("ThirdAbomination", Player(18), thirdAbominationSpawnPoint)
+  this.thirdAbomination = Abomination.Create("ThirdAbomination", Player(18), Player(0), thirdAbominationSpawnPoint)
 
   -- Fourth Abomination:
   local fourthAbominationSpawnPoint = Utility.Point.Create(-2716.0, 5304.5)
-  this.fourthAbomination = Abomination.Create("FourthAbomination", Player(22), fourthAbominationSpawnPoint)
+  this.fourthAbomination = Abomination.Create("FourthAbomination", Player(22), Player(0), fourthAbominationSpawnPoint)
 
   -- Add Abominations to the list:
   table.insert(this.AbominationList, this.firstAbomination)
@@ -169,7 +326,11 @@ end
 function this.AbominationHandler()
   local currentElapsedSeconds = GameClock.GetElapsedSeconds()
 
-  this.AbominationSpawn()
+  if(ModuloInteger(currentElapsedSeconds, this.upgradePeriod) == 0) then
+    this.level = this.level + 1
+  end
+
+  this.AbominationSpawn(this.level)
 end
 
   -- This function is useful for debugging.
@@ -181,11 +342,16 @@ function this.PrintAbominationNames()
   end
 end
 
-function this.AbominationSpawn()
+function this.AbominationSpawn(level)
   for k,v in ipairs(this.AbominationList) do
     if(v.active) then
-      if(ModuloInteger(GameClock.GetElapsedSeconds(), 5) == 0) then
-        v.SpawnRandomUnit()
+      if(ModuloInteger(GameClock.GetElapsedSeconds(), 10) == 0) then
+        v.SpawnRandomUnit(level)
+      end
+      if(ModuloInteger(GameClock.GetElapsedSeconds(), 30) == 0) then
+        v.SpawnRandomUnit(level)
+        v.SpawnRandomUnit(level)
+        v.SpawnRandomUnit(level)
       end
     end
   end
@@ -605,6 +771,10 @@ function Init()
   xpcall(UnitList_Init, print)
   print("UnitList_Init end")
 
+  print("UpgradeList_Init start")
+  xpcall(UpgradeList_Init, print)
+  print("UpgradeList_Init end")
+
   -- print("TestManager TestHumanUnits start")
   -- xpcall(TestManager.Test_HumanUnits, print)
   -- print("TestManager TestHumanUnits end")
@@ -706,6 +876,57 @@ HumanUnitList =
   "Hblm",
 }
 
+HumanCampaignUnitList =
+{
+  "hhes",
+  "hcth",
+  "hrrh",
+  "nccd",
+  "nccr",
+  "ncco",
+  "nccu",
+  "nwar",
+  "nemi",
+  "nhef",
+  "nhem",
+  "nhea",
+  "nmed",
+  "nser",
+  "hbot",
+  "hdes",
+  "hbsh",
+  "nchp",
+  "nhym",
+  "nws1",
+  "nbee",
+  "njks",
+  "hrdh",
+  "hhdl",
+  "hbew",
+  "nhew",
+  "nbel",
+  "Hssa",
+  "hddt",
+  "Haah",
+  "Hapm",
+  "Hgam",
+  "Hant",
+  "Hart",
+  "Harf",
+  "Hdgo",
+  "Hhkl",
+  "Hjai",
+  "Hjnd",
+  "Hkal",
+  "Hlgr",
+  "Hpb1",
+  "Hmgd",
+  "Hmbr",
+  "Hpb2",
+  "Hvwd",
+  "Huth",
+}
+
 OrcUnitList =
 {
   "opeo",
@@ -726,6 +947,41 @@ OrcUnitList =
   "Oshd",
 }
 
+OrcCampaignUnitList =
+{
+  "owad",
+  "nw2w",
+  "nchw",
+  "nchg",
+  "nchr",
+  "nckb",
+  "ncpn",
+  "obai",
+  "obot",
+  "odes",
+  "ojgn",
+  "nspc",
+  "oosc",
+  "owar",
+  "ogrk",
+  "oswy",
+  "ownr",
+  "odkt",
+  "Nbbc",
+  "Ocbh",
+  "Ocb2",
+  "Nsjs",
+  "Odrt",
+  "Ogrh",
+  "Opgh",
+  "Ogld",
+  "Orex",
+  "Orkn",
+  "Osam",
+  "Othr",
+  "Oths",
+}
+
 UndeadUnitList =
 {
   "uaco",
@@ -743,6 +999,36 @@ UndeadUnitList =
   "Ulic",
   "Udre",
   "Ucrl",
+}
+
+UndeadCampaignUnitList =
+{
+  "nzom",
+  "nzof",
+  "ubot",
+  "udes",
+  "uubs",
+  "uarb",
+  "uktg",
+  "uktn",
+  "uswb",
+  "ubdd",
+  "ubdr",
+  "Nman",
+  "Uwar",
+  "Npld",
+  "Nklj",
+  "Nmag",
+  "Uanb",
+  "Uear",
+  "Ubal",
+  "Uvng",
+  "Udth",
+  "Uktl",
+  "Umal",
+  "Usyl",
+  "Utic",
+  "Uvar",
 }
 
 NightElfUnitList =
@@ -765,7 +1051,383 @@ NightElfUnitList =
   "Ewar",
 }
 
+NightElfCampaignUnitList = 
+{
+  "nthr",
+  "etrs",
+  "edes",
+  "ebsh",
+  "enec",
+  "eilw",
+  "nwat",
+  "ensh",
+  "nssn",
+  "eshd",
+  "Ecen",
+  "Ekgg",
+  "Eill",
+  "Eevi",
+  "Ewrd",
+  "Emns",
+  "Emfr",
+  "Efur",
+  "Etyr",
+}
+
+NagaUnitList =
+{
+  "nwgs",
+  "nnmg",
+  "nnsw",
+  "nsnp",
+  "nmyr",
+  "nnrg",
+  "nhyc",
+  "nmpe",
+  "Hvsh",
+}
+
+NeutralHostileUnitList =
+{
+  "nanm",
+  "nanb",
+  "nanc",
+  "nanw",
+  "nane",
+  "nano",
+  "nban",
+  "nbrg",
+  "nrog",
+  "nass",
+  "nenf",
+  "nbld",
+  "nbdm",
+  "nbda",
+  "nbdw",
+  "nbds",
+  "nbdo",
+  "ncea",
+  "ncer",
+  "ncim",
+  "ncen",
+  "ncks",
+  "ncnk",
+  "nscb",
+  "nsc2",
+  "nsc3",
+  "ndtr",
+  "ndtp",
+  "ndtt",
+  "ndtb",
+  "ndth",
+  "ndtw",
+  "ndrf",
+  "ndrm",
+  "ndrp",
+  "ndrw",
+  "ndrh",
+  "ndrd",
+  "ndrs",
+  "nrdk",
+  "nrdr",
+  "nrmw",
+  "nbdr",
+  "nbdk",
+  "nbwm",
+  "nbzw",
+  "nbzk",
+  "nbzd",
+  "ngrw",
+  "ngdk",
+  "ngrd",
+  "nadw",
+  "nadk",
+  "nadr",
+  "nnht",
+  "nndk",
+  "nndr",
+  "nrel",
+  "nele",
+  "nsel",
+  "nelb",
+  "nenc",
+  "nenp",
+  "nepl",
+  "ners",
+  "nerd",
+  "nerw",
+  "nfor",
+  "nfot",
+  "nfod",
+  "nfgu",
+  "nfgb",
+  "nfov",
+  "npfl",
+  "nfel",
+  "npfm",
+  "nftr",
+  "nfsp",
+  "nftt",
+  "nftb",
+  "nfsh",
+  "nftk",
+  "nfrl",
+  "nfrs",
+  "nfrp",
+  "nfrb",
+  "nfrg",
+  "nfre",
+  "nfra",
+  "ngh1",
+  "ngh2",
+  "nsgn",
+  "nsgh",
+  "nsgb",
+  "nspb",
+  "nspg",
+  "nspr",
+  "nssp",
+  "nsgt",
+  "nsbm",
+  "ngna",
+  "ngns",
+  "ngno",
+  "ngnb",
+  "ngnw",
+  "ngnv",
+  "ngrk",
+  "ngst",
+  "nggr",
+  "narg",
+  "nwrg",
+  "nsgg",
+  "nhar",
+  "ngrr",
+  "nhrw",
+  "nhrh",
+  "nhrq",
+  "nhfp",
+  "nhdc",
+  "nhhr",
+  "nhyh",
+  "nhyd",
+  "nehy",
+  "nahy",
+  "nitr",
+  "nitp",
+  "nitt",
+  "nits",
+  "nith",
+  "nitw",
+  "ninc",
+  "ninm",
+  "nina",
+  "nkob",
+  "nkog",
+  "nkot",
+  "nkol",
+  "nltl",
+  "nthl",
+  "nstw",
+  "nlpr",
+  "nlpd",
+  "nltc",
+  "nlds",
+  "nlsn",
+  "nlkl",
+  "nwiz",
+  "nwzr",
+  "nwzg",
+  "nwzd",
+  "nmgw",
+  "nmgr",
+  "nmgd",
+  "nmam",
+  "nmit",
+  "nmdr",
+  "nmcf",
+  "nmbg",
+  "nmtw",
+  "nmsn",
+  "nmrv",
+  "nmsc",
+  "nmrl",
+  "nmrr",
+  "nmpg",
+  "nmfs",
+  "nmrm",
+  "nmmu",
+  "nspd",
+  "nnwa",
+  "nnwl",
+  "nnwr",
+  "nnws",
+  "nnwq",
+  "nogr",
+  "nomg",
+  "nogm",
+  "nogl",
+  "nowb",
+  "nowe",
+  "nowk",
+  "nplb",
+  "nplg",
+  "nfpl",
+  "nfps",
+  "nfpt",
+  "nfpc",
+  "nfpe",
+  "nfpu",
+  "nrzt",
+  "nrzs",
+  "nqbh",
+  "nrzb",
+  "nrzm",
+  "nrzg",
+  "nrvf",
+  "nrev",
+  "nrvs",
+  "nsrv",
+  "nrvl",
+  "nrvi",
+  "ndrv",
+  "nrvd",
+  "nlrv",
+  "nslh",
+  "nslr",
+  "nslv",
+  "nsll",
+  "nsqt",
+  "nsqe",
+  "nsqo",
+  "nsqa",
+  "nsty",
+  "nsat",
+  "nsts",
+  "nstl",
+  "nsth",
+  "nsko",
+  "nsog",
+  "nsoc",
+  "nslm",
+  "nslf",
+  "nsln",
+  "nsra",
+  "nsrh",
+  "nsrn",
+  "nsrw",
+  "ndqn",
+  "ndwv",
+  "ndqt",
+  "ndqp",
+  "ndqs",
+  "ntrh",
+  "ntrs",
+  "ntrt",
+  "ntrg",
+  "ntrd",
+  "ntkf",
+  "ntka",
+  "ntkh",
+  "ntkt",
+  "ntkw",
+  "ntks",
+  "ntkc",
+  "nubk",
+  "nubr",
+  "nubw",
+  "nvdl",
+  "nvdw",
+  "nvdg",
+  "nvde",
+  "nwen",
+  "nwnr",
+  "nwns",
+  "nwna",
+  "nwwf",
+  "nwlt",
+  "nwwg",
+  "nwlg",
+  "nwwd",
+  "nwld",
+  "nska",
+  "nskf",
+  "nskm",
+  "nbal",
+  "ninf",
+  "ndrj",
+  "ndmu",
+  "nskg",
+  "njg1",
+  "njga",
+  "njgb",
+  "Nmsr", -- There's a murloc hero??
+  "ndrl",
+  "ndrt",
+  "ndrn",
+  "ngow",
+  "ngos",
+  "nggd",
+  "nggg",
+  "nggm",
+  "nwzw",
+  "nogo",
+  "nogn",
+  "noga",
+  "ndsa",
+  "nglm",
+  "nfgl",
+}
+
+NeutralPassiveUnitList =
+{
+  "nalb",
+  "nech",
+  "ncrb",
+  "ndog",
+  "ndwm",
+  "nfbr",
+  "nfro",
+  "nhmc",
+  "npng",
+  "npig",
+  "necr",
+  "nrac",
+  "nrat",
+  "nsea",
+  "nshe",
+  "nskk",
+  "nsno",
+  "uder",
+  "uvul",
+  "nske",
+  "Nalc",
+  "Nswt",
+  "Nngs",
+  "Ntin",
+  "Nbst",
+  "nbpm",
+  "Nbrn",
+  "Nfir",
+  "Nplh",
+  "zcso",
+  "zhyd",
+  "zmar",
+  "zjug",
+  "zzrg",
+  "nvlk",
+  "nvk2",
+  "ngog",
+  "nvlw",
+  "nvl2",
+  "nvil",
+  "ncat",
+  "Naka",
+}
+
 AllRacesUnitList = {}
+
+AllUnitList = {}
 
 
 function UnitList_Init()
@@ -774,6 +1436,27 @@ function UnitList_Init()
   Utility.TableMerge(AllRacesUnitList, OrcUnitList)
   Utility.TableMerge(AllRacesUnitList, UndeadUnitList)
   Utility.TableMerge(AllRacesUnitList, NightElfUnitList)
+
+  -- Merge everything into one big table:
+  Utility.TableMerge(AllUnitList, AllRacesUnitList)
+  Utility.TableMerge(AllUnitList, HumanCampaignUnitList)
+  Utility.TableMerge(AllUnitList, OrcCampaignUnitList)
+  Utility.TableMerge(AllUnitList, UndeadCampaignUnitList)
+  Utility.TableMerge(AllUnitList, NightElfCampaignUnitList)
+  Utility.TableMerge(AllUnitList, NeutralHostileUnitList)
+  Utility.TableMerge(AllUnitList, NeutralPassiveUnitList)
+end
+
+function CreateBuildingsForPlayer0()
+    local p = Player(0)
+    local u
+    local unitID
+    local t
+    local life
+    gg_unit_hvlt_0023 = BlzCreateUnitWithSkin(p, FourCC("hvlt"), 448.0, -2432.0, 270.000, FourCC("hvlt"))
+    gg_unit_ovln_0024 = BlzCreateUnitWithSkin(p, FourCC("ovln"), 832.0, -2432.0, 270.000, FourCC("ovln"))
+    gg_unit_eden_0025 = BlzCreateUnitWithSkin(p, FourCC("eden"), 1216.0, -2368.0, 270.000, FourCC("eden"))
+    gg_unit_utom_0026 = BlzCreateUnitWithSkin(p, FourCC("utom"), 1600.0, -2304.0, 270.000, FourCC("utom"))
 end
 
 function CreateNeutralPassiveBuildings()
@@ -782,13 +1465,13 @@ function CreateNeutralPassiveBuildings()
     local unitID
     local t
     local life
-    u = BlzCreateUnitWithSkin(p, FourCC("ngol"), -6336.0, 256.0, 270.000, FourCC("ngol"))
+    u = BlzCreateUnitWithSkin(p, FourCC("ngol"), -1728.0, -6720.0, 270.000, FourCC("ngol"))
     SetResourceAmount(u, 100000)
     u = BlzCreateUnitWithSkin(p, FourCC("ngol"), -4864.0, -7040.0, 270.000, FourCC("ngol"))
     SetResourceAmount(u, 100000)
     u = BlzCreateUnitWithSkin(p, FourCC("ngol"), 5056.0, -6912.0, 270.000, FourCC("ngol"))
     SetResourceAmount(u, 100000)
-    u = BlzCreateUnitWithSkin(p, FourCC("ngol"), 6528.0, 3328.0, 270.000, FourCC("ngol"))
+    u = BlzCreateUnitWithSkin(p, FourCC("ngol"), 1024.0, -6592.0, 270.000, FourCC("ngol"))
     SetResourceAmount(u, 100000)
     u = BlzCreateUnitWithSkin(p, FourCC("ngme"), -192.0, -1088.0, 270.000, FourCC("ngme"))
     u = BlzCreateUnitWithSkin(p, FourCC("nfoh"), 192.0, -1024.0, 270.000, FourCC("nfoh"))
@@ -800,9 +1483,16 @@ function CreateNeutralPassiveBuildings()
     SetUnitColor(u, ConvertPlayerColor(0))
     u = BlzCreateUnitWithSkin(p, FourCC("nten"), -480.0, -2144.0, 270.000, FourCC("nten"))
     u = BlzCreateUnitWithSkin(p, FourCC("nten"), 32.0, -2400.0, 270.000, FourCC("nten"))
+    u = BlzCreateUnitWithSkin(p, FourCC("ngol"), -6272.0, 0.0, 270.000, FourCC("ngol"))
+    SetResourceAmount(u, 100000)
+    u = BlzCreateUnitWithSkin(p, FourCC("ngol"), 3648.0, -1600.0, 270.000, FourCC("ngol"))
+    SetResourceAmount(u, 100000)
+    u = BlzCreateUnitWithSkin(p, FourCC("ngol"), 5184.0, 5504.0, 270.000, FourCC("ngol"))
+    SetResourceAmount(u, 100000)
 end
 
 function CreatePlayerBuildings()
+    CreateBuildingsForPlayer0()
 end
 
 function CreatePlayerUnits()
@@ -812,6 +1502,18 @@ function CreateAllUnits()
     CreateNeutralPassiveBuildings()
     CreatePlayerBuildings()
     CreatePlayerUnits()
+end
+
+function Trig_MakeShopsInvulnerable_Actions()
+    SetUnitInvulnerable(gg_unit_hvlt_0023, true)
+    SetUnitInvulnerable(gg_unit_ovln_0024, true)
+    SetUnitInvulnerable(gg_unit_eden_0025, true)
+    SetUnitInvulnerable(gg_unit_utom_0026, true)
+end
+
+function InitTrig_MakeShopsInvulnerable()
+    gg_trg_MakeShopsInvulnerable = CreateTrigger()
+    TriggerAddAction(gg_trg_MakeShopsInvulnerable, Trig_MakeShopsInvulnerable_Actions)
 end
 
 function Trig_Melee_Initialization_Actions()
@@ -838,11 +1540,13 @@ function InitTrig_CallInit()
 end
 
 function InitCustomTriggers()
+    InitTrig_MakeShopsInvulnerable()
     InitTrig_Melee_Initialization()
     InitTrig_CallInit()
 end
 
 function RunInitializationTriggers()
+    ConditionalTriggerExecute(gg_trg_MakeShopsInvulnerable)
     ConditionalTriggerExecute(gg_trg_Melee_Initialization)
     ConditionalTriggerExecute(gg_trg_CallInit)
 end
@@ -962,19 +1666,16 @@ function InitCustomTeams()
 end
 
 function InitAllyPriorities()
-    SetStartLocPrioCount(0, 1)
+    SetStartLocPrioCount(0, 2)
     SetStartLocPrio(0, 0, 1, MAP_LOC_PRIO_HIGH)
-    SetStartLocPrioCount(1, 2)
+    SetStartLocPrio(0, 1, 3, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrioCount(1, 1)
     SetStartLocPrio(1, 0, 0, MAP_LOC_PRIO_HIGH)
-    SetStartLocPrio(1, 1, 2, MAP_LOC_PRIO_LOW)
-    SetStartLocPrioCount(2, 3)
-    SetStartLocPrio(2, 0, 0, MAP_LOC_PRIO_LOW)
-    SetStartLocPrio(2, 1, 1, MAP_LOC_PRIO_HIGH)
-    SetStartLocPrio(2, 2, 3, MAP_LOC_PRIO_HIGH)
-    SetStartLocPrioCount(3, 3)
-    SetStartLocPrio(3, 0, 0, MAP_LOC_PRIO_LOW)
-    SetStartLocPrio(3, 1, 1, MAP_LOC_PRIO_LOW)
-    SetStartLocPrio(3, 2, 2, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrioCount(2, 1)
+    SetStartLocPrio(2, 0, 3, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrioCount(3, 2)
+    SetStartLocPrio(3, 0, 0, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(3, 1, 2, MAP_LOC_PRIO_LOW)
     SetStartLocPrioCount(4, 6)
     SetStartLocPrio(4, 0, 0, MAP_LOC_PRIO_LOW)
     SetStartLocPrio(4, 1, 1, MAP_LOC_PRIO_LOW)
@@ -1031,10 +1732,10 @@ function config()
     SetPlayers(8)
     SetTeams(8)
     SetGamePlacement(MAP_PLACEMENT_TEAMS_TOGETHER)
-    DefineStartLocation(0, -6144.0, -512.0)
+    DefineStartLocation(0, -1728.0, -5952.0)
     DefineStartLocation(1, -4352.0, -6464.0)
     DefineStartLocation(2, 4800.0, -6144.0)
-    DefineStartLocation(3, 5696.0, 3072.0)
+    DefineStartLocation(3, 1152.0, -5824.0)
     DefineStartLocation(4, -5248.0, 4608.0)
     DefineStartLocation(5, -6016.0, 6016.0)
     DefineStartLocation(6, -4160.0, 6080.0)

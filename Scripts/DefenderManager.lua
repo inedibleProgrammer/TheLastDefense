@@ -25,7 +25,6 @@ function this.Init()
     --     Delete their goldmine
 
   this.InitializeDefenders()
-  -- this.PrintDefenderNames()
 end
 
 function this.InitializeDefenders()
@@ -52,7 +51,7 @@ function this.InitializeDefenders()
 
   -- this.InitializeDefenders() starts here:
   local g
-  for i=0,3 do
+  for i=0,3 do -- For each possible human player
     g = CreateGroup()
     GroupEnumUnitsOfPlayer(g, Player(i), nil) -- What if the player isn't in the game? Will GroupEnumUnitsOfPlayer handle that?
     ForGroup(g, FindMainBase)
