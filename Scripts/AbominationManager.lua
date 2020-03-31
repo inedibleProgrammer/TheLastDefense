@@ -3,7 +3,7 @@ AbominationManager = {}
 local this = AbominationManager
 this.spawnPeriod = 5 -- Seconds
 this.upgradePeriod = 300 -- Seconds
-this.healthMultiplier = 200 -- HP
+this.healthMultiplier = 100 -- HP
 this.level = 1 -- Scale monster spawning
 this.AbominationList = {}
 
@@ -19,13 +19,13 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
   this.objectivePoint = Utility.Point.Create(0.0, 0.0)
   this.active = false
   this.unit = nil
-  this.unitGroup = CreateGroup()
+  -- this.unitGroup = CreateGroup()
   this.upgradesFinished = false
 
   function this.SpawnRandomUnit(level)
     local function IsIdle()
       local idleUnit = GetEnumUnit()
-      if(GetUnitCurrentOrder(idleUnit) == 0) then
+      if(not(GetUnitCurrentOrder(idleUnit) == 851983)) then
         local g = CreateGroup()
         GroupEnumUnitsOfPlayer(g, this.targetPlayer, nil)
         local u = GroupPickRandomUnit(g)
@@ -35,17 +35,20 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
       end
     end
 
-    -- Select a random unit that is not a hero
+    
     local isHero = true
     local levelRestraint = true
-    local hundredAttempts = 100
+    local attemptCounter = 5
 
-    while( ((isHero == true) or (levelRestraint == true)) and (hundredAttempts >= 0) ) do
+    -- Select a random unit that is not a hero, and meets the level restraint:
+    while( ((isHero == true) or (levelRestraint == true)) and (attemptCounter >= 0) ) do
       local r = GetRandomInt(1, #AllUnitList)
 
       local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
       IssuePointOrder(u, "attack", this.objectivePoint.x, this.objectivePoint.y)
-      GroupAddUnit(this.unitGroup, u)
+      -- GroupAddUnit(this.unitGroup, u)
+
+      
 
       if(IsHeroUnitId(GetUnitTypeId(u))) then
         RemoveUnit(u)
@@ -64,11 +67,16 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
         this.DoUpgrades()
       end
 
-      hundredAttempts = hundredAttempts - 1
+      attemptCounter = attemptCounter - 1
     end
 
-    ForGroup(this.unitGroup, IsIdle)
-
+    -- Make all the lazy monsters attack!
+    local g = CreateGroup()
+    GroupEnumUnitsOfPlayer(g, this.player, nil)
+    ForGroup(g, IsIdle)
+    DestroyGroup(g)
+    g = nil
+    
   end
 
   function this.DoUpgrades()
@@ -115,6 +123,7 @@ function this.Init()
   table.insert(this.AbominationList, this.fourthAbomination)
 end
 
+-- Main processing should be done here.
 function this.AbominationHandler()
   local currentElapsedSeconds = GameClock.GetElapsedSeconds()
 

@@ -5,37 +5,41 @@
 function Init()
   print("Init Start")
 
-  print("GameClockInit Start")
+  --print("loading minimap")
+  xpcall(BlzChangeMinimapTerrainTex("war3mapImported\\castle.blp"), print)
+  --print("end loading minimap")
+
+  --print("GameClockInit Start")
   xpcall(GameClock.Init, print)
-  print("GameClockInit End")
+  --print("GameClockInit End")
 
-  print("CommandManagerInit Start")
+  --print("CommandManagerInit Start")
   xpcall(CommandManager.Init, print)
-  print("CommandManagerInit End")
+  --print("CommandManagerInit End")
 
-  print("UnitList_Init start")
+  --print("UnitList_Init start")
   xpcall(UnitList_Init, print)
-  print("UnitList_Init end")
+  --print("UnitList_Init end")
 
-  print("UpgradeList_Init start")
+  --print("UpgradeList_Init start")
   xpcall(UpgradeList_Init, print)
-  print("UpgradeList_Init end")
+  --print("UpgradeList_Init end")
 
   -- print("TestManager TestHumanUnits start")
   -- xpcall(TestManager.Test_HumanUnits, print)
   -- print("TestManager TestHumanUnits end")
 
-  print("AbominationManagerInit start")
+  --print("AbominationManagerInit start")
   xpcall(AbominationManager.Init, print)
-  print("AbominationManagerInit end")
+  --print("AbominationManagerInit end")
 
-  print("DefenderManagerInit start")
+  --print("DefenderManagerInit start")
   xpcall(DefenderManager.Init, print)
-  print("DefenderManagerInit end")
+  --print("DefenderManagerInit end")
 
-  print("TheLastDefenseInit start")
+  --print("TheLastDefenseInit start")
   xpcall(TheLastDefense.Init, print)
-  print("TheLastDefenseInit end")
+  --print("TheLastDefenseInit end")
 
   print("Init End")
 end

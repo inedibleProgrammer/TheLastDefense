@@ -1,9 +1,9 @@
+gg_trg_MakeShopsInvulnerable = nil
+gg_trg_Upgrades = nil
+gg_trg_KillRandomUnitInGroup = nil
+gg_trg_CreateUnitAndAttackGround = nil
 gg_trg_Melee_Initialization = nil
 gg_trg_CallInit = nil
-gg_trg_CreateUnitAndAttackGround = nil
-gg_trg_KillRandomUnitInGroup = nil
-gg_trg_Upgrades = nil
-gg_trg_MakeShopsInvulnerable = nil
 gg_unit_hvlt_0023 = nil
 gg_unit_ovln_0024 = nil
 gg_unit_eden_0025 = nil

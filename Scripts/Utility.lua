@@ -1,28 +1,5 @@
 Utility = {}
 
-function Utility.TriggerRegisterAllPlayersChat(which_trigger, message)
-  local all_players = (bj_MAX_PLAYER_SLOTS + 1 )
-  for i = 0, all_players do
-    TriggerRegisterPlayerChatEvent(which_trigger, Player(i), message, false)
-  end
-end
-
-function Utility.MySplit(input_str, sep)
-  if sep == nil then
-    sep = " "
-  end
-  local t={}
-  for str in string.gmatch(input_str, "([^"..sep.."]+)") do
-    table.insert(t, str)
-  end
-  return t
-end
-
-function Utility.TableMerge(t1, t2)
-  for k,v in ipairs(t2) do
-      table.insert(t1, v)
-  end
-end
 
 --[[ Definition of Point ]]
 Utility.Point = {}
@@ -47,3 +24,48 @@ function Utility.Point.Create(x, y)
 end
 
 -- End Definition of Point
+
+
+function Utility.TriggerRegisterAllPlayersChat(which_trigger, message)
+  local all_players = (bj_MAX_PLAYER_SLOTS + 1 )
+  for i = 0, all_players do
+    TriggerRegisterPlayerChatEvent(which_trigger, Player(i), message, false)
+  end
+end
+
+function Utility.MySplit(input_str, sep)
+  if sep == nil then
+    sep = " "
+  end
+  local t={}
+  for str in string.gmatch(input_str, "([^"..sep.."]+)") do
+    table.insert(t, str)
+  end
+  return t
+end
+
+function Utility.TableMerge(t1, t2)
+  for k,v in ipairs(t2) do
+      table.insert(t1, v)
+  end
+end
+
+
+-- Unit Group Functions:
+function Utility.RemoveDeadUnitsFromGroup(unitGroup)
+  local function RemoveDeadUnits()
+    local u = GetEnumUnit()
+    if(IsUnitType(u, UNIT_TYPE_DEAD)) do
+      GroupRemoveUnit(unitGroup, u)
+    end
+  end
+
+  ForGroup(unitGroup, RemoveDeadUnits)
+end
+
+function Utility.AttackRandomUnitInGroup(commandedUnit, unitGroup)
+  local u = GroupPickRandomUnit(unitGroup)
+  IssueTargetOrder(commandedUnit, "attack", u)
+end
+
+-- End Unit Group Functions
