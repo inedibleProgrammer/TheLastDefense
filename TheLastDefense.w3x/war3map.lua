@@ -1,13 +1,8 @@
-gg_trg_MakeShopsInvulnerable = nil
 gg_trg_Upgrades = nil
 gg_trg_KillRandomUnitInGroup = nil
 gg_trg_CreateUnitAndAttackGround = nil
 gg_trg_Melee_Initialization = nil
 gg_trg_CallInit = nil
-gg_unit_hvlt_0023 = nil
-gg_unit_ovln_0024 = nil
-gg_unit_eden_0025 = nil
-gg_unit_utom_0026 = nil
 function InitGlobals()
 end
 
@@ -211,7 +206,7 @@ AbominationManager = {}
 local this = AbominationManager
 this.spawnPeriod = 5 -- Seconds
 this.upgradePeriod = 300 -- Seconds
-this.healthMultiplier = 200 -- HP
+this.healthMultiplier = 100 -- HP
 this.level = 1 -- Scale monster spawning
 this.AbominationList = {}
 
@@ -233,7 +228,7 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
   function this.SpawnRandomUnit(level)
     local function IsIdle()
       local idleUnit = GetEnumUnit()
-      if(GetUnitCurrentOrder(idleUnit) == 0) then
+      if(not(GetUnitCurrentOrder(idleUnit) == 851983)) then
         local g = CreateGroup()
         GroupEnumUnitsOfPlayer(g, this.targetPlayer, nil)
         local u = GroupPickRandomUnit(g)
@@ -246,7 +241,7 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
     -- Select a random unit that is not a hero
     local isHero = true
     local levelRestraint = true
-    local hundredAttempts = 100
+    local hundredAttempts = 5
 
     while( ((isHero == true) or (levelRestraint == true)) and (hundredAttempts >= 0) ) do
       local r = GetRandomInt(1, #AllUnitList)
@@ -758,6 +753,10 @@ end
 
 function Init()
   print("Init Start")
+
+  print("loading minimap")
+  xpcall(BlzChangeMinimapTerrainTex("war3mapImported\\castle.blp"), print)
+  print("end loading minimap")
 
   print("GameClockInit Start")
   xpcall(GameClock.Init, print)
@@ -1447,18 +1446,6 @@ function UnitList_Init()
   Utility.TableMerge(AllUnitList, NeutralPassiveUnitList)
 end
 
-function CreateBuildingsForPlayer0()
-    local p = Player(0)
-    local u
-    local unitID
-    local t
-    local life
-    gg_unit_hvlt_0023 = BlzCreateUnitWithSkin(p, FourCC("hvlt"), 448.0, -2432.0, 270.000, FourCC("hvlt"))
-    gg_unit_ovln_0024 = BlzCreateUnitWithSkin(p, FourCC("ovln"), 832.0, -2432.0, 270.000, FourCC("ovln"))
-    gg_unit_eden_0025 = BlzCreateUnitWithSkin(p, FourCC("eden"), 1216.0, -2368.0, 270.000, FourCC("eden"))
-    gg_unit_utom_0026 = BlzCreateUnitWithSkin(p, FourCC("utom"), 1600.0, -2304.0, 270.000, FourCC("utom"))
-end
-
 function CreateNeutralPassiveBuildings()
     local p = Player(PLAYER_NEUTRAL_PASSIVE)
     local u
@@ -1489,10 +1476,23 @@ function CreateNeutralPassiveBuildings()
     SetResourceAmount(u, 100000)
     u = BlzCreateUnitWithSkin(p, FourCC("ngol"), 5184.0, 5504.0, 270.000, FourCC("ngol"))
     SetResourceAmount(u, 100000)
+    u = BlzCreateUnitWithSkin(p, FourCC("ngol"), 6528.0, -4928.0, 270.000, FourCC("ngol"))
+    SetResourceAmount(u, 100000)
+    u = BlzCreateUnitWithSkin(p, FourCC("ngol"), 0.0, -3200.0, 270.000, FourCC("ngol"))
+    SetResourceAmount(u, 100000)
+    u = BlzCreateUnitWithSkin(p, FourCC("ngol"), -3648.0, -4096.0, 270.000, FourCC("ngol"))
+    SetResourceAmount(u, 100000)
+    u = BlzCreateUnitWithSkin(p, FourCC("ngol"), -1280.0, 960.0, 270.000, FourCC("ngol"))
+    SetResourceAmount(u, 100000)
+    u = BlzCreateUnitWithSkin(p, FourCC("ngol"), 2560.0, 2688.0, 270.000, FourCC("ngol"))
+    SetResourceAmount(u, 100000)
+    u = BlzCreateUnitWithSkin(p, FourCC("ngol"), -6272.0, 2304.0, 270.000, FourCC("ngol"))
+    SetResourceAmount(u, 100000)
+    u = BlzCreateUnitWithSkin(p, FourCC("ngol"), -2816.0, -2112.0, 270.000, FourCC("ngol"))
+    SetResourceAmount(u, 100000)
 end
 
 function CreatePlayerBuildings()
-    CreateBuildingsForPlayer0()
 end
 
 function CreatePlayerUnits()
@@ -1502,18 +1502,6 @@ function CreateAllUnits()
     CreateNeutralPassiveBuildings()
     CreatePlayerBuildings()
     CreatePlayerUnits()
-end
-
-function Trig_MakeShopsInvulnerable_Actions()
-    SetUnitInvulnerable(gg_unit_hvlt_0023, true)
-    SetUnitInvulnerable(gg_unit_ovln_0024, true)
-    SetUnitInvulnerable(gg_unit_eden_0025, true)
-    SetUnitInvulnerable(gg_unit_utom_0026, true)
-end
-
-function InitTrig_MakeShopsInvulnerable()
-    gg_trg_MakeShopsInvulnerable = CreateTrigger()
-    TriggerAddAction(gg_trg_MakeShopsInvulnerable, Trig_MakeShopsInvulnerable_Actions)
 end
 
 function Trig_Melee_Initialization_Actions()
@@ -1540,13 +1528,11 @@ function InitTrig_CallInit()
 end
 
 function InitCustomTriggers()
-    InitTrig_MakeShopsInvulnerable()
     InitTrig_Melee_Initialization()
     InitTrig_CallInit()
 end
 
 function RunInitializationTriggers()
-    ConditionalTriggerExecute(gg_trg_MakeShopsInvulnerable)
     ConditionalTriggerExecute(gg_trg_Melee_Initialization)
     ConditionalTriggerExecute(gg_trg_CallInit)
 end
