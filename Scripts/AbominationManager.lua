@@ -1,10 +1,7 @@
 AbominationManager = {}
 
 local this = AbominationManager
-this.spawnPeriod = 5 -- Seconds
-this.upgradePeriod = 300 -- Seconds
-this.healthMultiplier = 100 -- HP
-this.level = 1 -- Scale monster spawning
+
 this.AbominationList = {}
 
 -- Definition of Abomination:
@@ -18,36 +15,34 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
   this.targetPlayer = targetPlayer -- The player to be targeted by the abomination.
   this.objectivePoint = Utility.Point.Create(0.0, 0.0)
   this.active = false
-  this.unit = nil
   this.upgradesFinished = false
 
-  function this.SpawnRandomUnit(level)    
+  function this.SpawnRandomUnit(gameParameters)    
     local isHero = true
     local levelRestraint = true
     local attemptCounter = 10
+
+    if(gameParameters.level < 3) then -- Trying to help with lag
+      attemptCounter = 3
+    end
 
     -- Select a random unit that is not a hero, and meets the level restraint:
     while( ((isHero == true) or (levelRestraint == true)) and (attemptCounter >= 0) ) do
       local r = GetRandomInt(1, #AllUnitList)
       local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
-      SetUnitCreepGuard(u, false)
-      RemoveGuardPosition(u)
+      this.ApplyUnitModifications(u, gameParameters)
+
       -- Conditions for an undesirable unit:
       isHero = IsHeroUnitId(GetUnitTypeId(u))
-      levelRestraint = (BlzGetUnitMaxHP(u) > (level * AbominationManager.healthMultiplier))
+      levelRestraint = (BlzGetUnitMaxHP(u) > (gameParameters.level * gameParameters.healthMultiplier))
 
-      -- If the unit is desirable, then it hasn't been removed and we should tell it to attack:
+      -- If the unit is desirable, remove it.
       if(levelRestraint or isHero) then
         RemoveUnit(u)
       end
 
       attemptCounter = attemptCounter - 1
       u = nil
-    end
-
-    if( (level == 5) and not(this.upgradesFinished) ) then
-      AbominationManager.healthMultiplier = 600
-      this.DoUpgrades()
     end
 
     -- Make all the lazy monsters attack!
@@ -69,11 +64,15 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
     g = nil
   end
 
-  function this.DoUpgrades()
-    this.upgradesFinished = true
+  function this.ApplyUnitModifications(relevantUnit, gameParameters)
+    SetUnitCreepGuard(relevantUnit, false)
+    RemoveGuardPosition(relevantUnit)
 
-    for k,v in ipairs(AllRacesUpgradeList) do
-      AddPlayerTechResearched(this.player, FourCC(v), 3)
+    if(gameParameters.unitSteroidEnabled) then
+      local currentHP = BlzGetUnitMaxHP(relevantUnit)
+      currentHP = currentHP + (100 * gameParameters.unitSteroidCounter)
+      BlzSetUnitMaxHP(relevantUnit, currentHP)
+      SetUnitLifePercentBJ(relevantUnit, 100.0)
     end
   end
 
@@ -82,11 +81,6 @@ end
 -- End Abomination
 
 function this.Init()
-  --[[ Initialize Timer: ]]
-  this.clockTrigger = CreateTrigger()
-  TriggerAddAction(this.clockTrigger, this.AbominationHandler)
-  TriggerRegisterTimerEvent(this.clockTrigger, 1.00, true)
-
   --[[ Initialize Abominations: ]]
   -- Abominations have fixed starting locations, so hard-code their spawn points.
 
@@ -128,23 +122,6 @@ function this.Init()
   end
 end
 
--- Main processing should be done here.
-function this.AbominationHandler()
-  local currentElapsedSeconds = GameClock.GetElapsedSeconds()
-
-  if(ModuloInteger(currentElapsedSeconds, this.upgradePeriod) == 0) then
-    this.level = this.level + 1
-  end
-
-  this.AbominationSpawn(this.level)
-
-  -- if a defender has lost all his units he is dead
-  -- this.DetermineLivingDefenders()
-
-  -- give the respective abomination of a dead defender a new living target defender
-  -- this.UpdateAbominationTargets()
-end
-
   -- This function is useful for debugging.
 function this.PrintAbominationNames()
   for k,v in ipairs(this.AbominationList) do 
@@ -154,34 +131,14 @@ function this.PrintAbominationNames()
   end
 end
 
-function this.AbominationSpawn(level)
+function this.AbominationSpawn(gameParameters)
   for k,v in ipairs(this.AbominationList) do
     if(v.active) then
-      if(ModuloInteger(GameClock.GetElapsedSeconds(), 10) == 0) then
-        v.SpawnRandomUnit(level)
-      end
-      if(ModuloInteger(GameClock.GetElapsedSeconds(), 30) == 0) then
-        v.SpawnRandomUnit(level)
-        v.SpawnRandomUnit(level)
-        v.SpawnRandomUnit(level)
-      end
+      v.SpawnRandomUnit(gameParameters)
     end
   end
 end
 
 
--- This should go in TheLastDefense.lua
-function this.DetermineLivingDefenders()
-  for k,v in ipairs(DefenderManager.DefenderList) do
-    local unitsRemaining = GetPlayerUnitCount(v, true)
-    if(unitsRemaining <= 0) then
-      v.alive = false
-    end
-  end
-end
 
-function this.UpdateAbominationTargets()
-  for k,v in ipairs(AbominationManager.AbominationList) do
-    local unitsRemaining = GetPlayerUnitCount(v.targetPlayer, true)
-  end
-end
+
