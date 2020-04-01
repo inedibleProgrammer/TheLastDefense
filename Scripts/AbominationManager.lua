@@ -3,7 +3,7 @@ AbominationManager = {}
 local this = AbominationManager
 this.spawnPeriod = 5 -- Seconds
 this.upgradePeriod = 300 -- Seconds
-this.healthMultiplier = 100 -- HP
+this.healthMultiplier = 400 -- HP
 this.level = 1 -- Scale monster spawning
 this.AbominationList = {}
 
@@ -26,48 +26,63 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
     local function IsIdle()
       local idleUnit = GetEnumUnit()
       if(not(GetUnitCurrentOrder(idleUnit) == 851983)) then
-        local g = CreateGroup()
-        GroupEnumUnitsOfPlayer(g, this.targetPlayer, nil)
-        local u = GroupPickRandomUnit(g)
-        IssueTargetOrder(idleUnit, "attack", u)
-        DestroyGroup(g)
-        g = nil
+        Utility.AttackRandomUnitOfPlayer(idleUnit, this.targetPlayer)
+        -- local g = CreateGroup()
+        -- GroupEnumUnitsOfPlayer(g, this.targetPlayer, nil)
+        -- local u = GroupPickRandomUnit(g)
+        -- IssueTargetOrder(idleUnit, "attack", u)
+        -- DestroyGroup(g)
+        -- g = nil
       end
+      idleUnit = nil
     end
 
     
     local isHero = true
     local levelRestraint = true
-    local attemptCounter = 5
+    local attemptCounter = 25
 
     -- Select a random unit that is not a hero, and meets the level restraint:
     while( ((isHero == true) or (levelRestraint == true)) and (attemptCounter >= 0) ) do
       local r = GetRandomInt(1, #AllUnitList)
 
       local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
-      IssuePointOrder(u, "attack", this.objectivePoint.x, this.objectivePoint.y)
+      -- IssuePointOrder(u, "attack", this.objectivePoint.x, this.objectivePoint.y)
       -- GroupAddUnit(this.unitGroup, u)
 
+      -- Conditions for an undesirable unit:
+      isHero = IsHeroUnitId(GetUnitTypeId(u))
+      levelRestraint = (BlzGetUnitMaxHP(u) > (level * AbominationManager.healthMultiplier))
+
+      -- if(IsHeroUnitId(GetUnitTypeId(u))) then
+      --   --RemoveUnit(u)
+      --   isHero = true
+      -- else
+      --   isHero = false
+      -- end
+
+      -- if(BlzGetUnitMaxHP(u) > (level * AbominationManager.healthMultiplier)) then
+      --   --RemoveUnit(u)
+      --   levelRestraint = true
+      -- else
+      --   levelRestraint = false
+      -- end
+
       
-
-      if(IsHeroUnitId(GetUnitTypeId(u))) then
+      -- If the unit is desirable, then it hasn't been removed and we should tell it to attack:
+      if(levelRestraint or isHero) then
         RemoveUnit(u)
       else
-        isHero = false
-      end
-
-      if(BlzGetUnitMaxHP(u) > (level * AbominationManager.healthMultiplier)) then
-        RemoveUnit(u)
-      else
-        levelRestraint = false
-      end
-
-      if( (level == 5) and not(this.upgradesFinished) ) then
-        AbominationManager.healthMultiplier = 600
-        this.DoUpgrades()
+        xpcall(Utility.AttackRandomUnitOfPlayer(u, this.targetPlayer), print)
       end
 
       attemptCounter = attemptCounter - 1
+      u = nil
+    end
+
+    if( (level == 5) and not(this.upgradesFinished) ) then
+      AbominationManager.healthMultiplier = 600
+      this.DoUpgrades()
     end
 
     -- Make all the lazy monsters attack!
@@ -76,7 +91,6 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
     ForGroup(g, IsIdle)
     DestroyGroup(g)
     g = nil
-    
   end
 
   function this.DoUpgrades()
@@ -121,6 +135,21 @@ function this.Init()
   table.insert(this.AbominationList, this.secondAbomination)
   table.insert(this.AbominationList, this.thirdAbomination)
   table.insert(this.AbominationList, this.fourthAbomination)
+
+  -- Remove Abomination Starting Units:
+  for k,v in ipairs(this.AbominationList) do
+    local function RemoveAbominableUnit()
+      local u = GetEnumUnit()
+      RemoveUnit(u)
+      u = nil
+    end
+
+    local g = CreateGroup()
+    GroupEnumUnitsOfPlayer(g, v.player, nil)
+    ForGroup(g, RemoveAbominableUnit)
+    DestroyGroup(g)
+    g = nil
+  end
 end
 
 -- Main processing should be done here.
@@ -132,6 +161,8 @@ function this.AbominationHandler()
   end
 
   this.AbominationSpawn(this.level)
+
+  -- if a defender has lost all his units, give the respective abomination a new target defender
 end
 
   -- This function is useful for debugging.

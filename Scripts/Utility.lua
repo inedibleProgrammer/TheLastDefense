@@ -55,17 +55,25 @@ end
 function Utility.RemoveDeadUnitsFromGroup(unitGroup)
   local function RemoveDeadUnits()
     local u = GetEnumUnit()
-    if(IsUnitType(u, UNIT_TYPE_DEAD)) do
+    if(IsUnitType(u, UNIT_TYPE_DEAD)) then
       GroupRemoveUnit(unitGroup, u)
     end
+    u = nil
   end
 
   ForGroup(unitGroup, RemoveDeadUnits)
 end
 
-function Utility.AttackRandomUnitInGroup(commandedUnit, unitGroup)
-  local u = GroupPickRandomUnit(unitGroup)
+function Utility.AttackRandomUnitOfPlayer(commandedUnit, targetPlayer)
+  local g = CreateGroup()
+  GroupEnumUnitsOfPlayer(g, targetPlayer, nil)
+  
+  local u = GroupPickRandomUnit(g)
   IssueTargetOrder(commandedUnit, "attack", u)
+  
+  DestroyGroup(g)
+  g = nil
+  u = nil
 end
 
 -- End Unit Group Functions

@@ -206,7 +206,7 @@ AbominationManager = {}
 local this = AbominationManager
 this.spawnPeriod = 5 -- Seconds
 this.upgradePeriod = 300 -- Seconds
-this.healthMultiplier = 100 -- HP
+this.healthMultiplier = 400 -- HP
 this.level = 1 -- Scale monster spawning
 this.AbominationList = {}
 
@@ -222,56 +222,78 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
   this.objectivePoint = Utility.Point.Create(0.0, 0.0)
   this.active = false
   this.unit = nil
-  this.unitGroup = CreateGroup()
+  -- this.unitGroup = CreateGroup()
   this.upgradesFinished = false
 
   function this.SpawnRandomUnit(level)
     local function IsIdle()
       local idleUnit = GetEnumUnit()
       if(not(GetUnitCurrentOrder(idleUnit) == 851983)) then
-        local g = CreateGroup()
-        GroupEnumUnitsOfPlayer(g, this.targetPlayer, nil)
-        local u = GroupPickRandomUnit(g)
-        IssueTargetOrder(idleUnit, "attack", u)
-        DestroyGroup(g)
-        g = nil
+        Utility.AttackRandomUnitOfPlayer(idleUnit, this.targetPlayer)
+        -- local g = CreateGroup()
+        -- GroupEnumUnitsOfPlayer(g, this.targetPlayer, nil)
+        -- local u = GroupPickRandomUnit(g)
+        -- IssueTargetOrder(idleUnit, "attack", u)
+        -- DestroyGroup(g)
+        -- g = nil
       end
+      idleUnit = nil
     end
 
-    -- Select a random unit that is not a hero
+    
     local isHero = true
     local levelRestraint = true
-    local hundredAttempts = 5
+    local attemptCounter = 25
 
-    while( ((isHero == true) or (levelRestraint == true)) and (hundredAttempts >= 0) ) do
+    -- Select a random unit that is not a hero, and meets the level restraint:
+    while( ((isHero == true) or (levelRestraint == true)) and (attemptCounter >= 0) ) do
       local r = GetRandomInt(1, #AllUnitList)
 
       local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
-      IssuePointOrder(u, "attack", this.objectivePoint.x, this.objectivePoint.y)
-      GroupAddUnit(this.unitGroup, u)
+      -- IssuePointOrder(u, "attack", this.objectivePoint.x, this.objectivePoint.y)
+      -- GroupAddUnit(this.unitGroup, u)
 
-      if(IsHeroUnitId(GetUnitTypeId(u))) then
+      -- Conditions for an undesirable unit:
+      isHero = IsHeroUnitId(GetUnitTypeId(u))
+      levelRestraint = (BlzGetUnitMaxHP(u) > (level * AbominationManager.healthMultiplier))
+
+      -- if(IsHeroUnitId(GetUnitTypeId(u))) then
+      --   --RemoveUnit(u)
+      --   isHero = true
+      -- else
+      --   isHero = false
+      -- end
+
+      -- if(BlzGetUnitMaxHP(u) > (level * AbominationManager.healthMultiplier)) then
+      --   --RemoveUnit(u)
+      --   levelRestraint = true
+      -- else
+      --   levelRestraint = false
+      -- end
+
+      
+      -- If the unit is desirable, then it hasn't been removed and we should tell it to attack:
+      if(levelRestraint or isHero) then
         RemoveUnit(u)
       else
-        isHero = false
+        xpcall(Utility.AttackRandomUnitOfPlayer(u, this.targetPlayer), print)
       end
 
-      if(BlzGetUnitMaxHP(u) > (level * AbominationManager.healthMultiplier)) then
-        RemoveUnit(u)
-      else
-        levelRestraint = false
-      end
-
-      if( (level == 5) and not(this.upgradesFinished) ) then
-        AbominationManager.healthMultiplier = 600
-        this.DoUpgrades()
-      end
-
-      hundredAttempts = hundredAttempts - 1
+      attemptCounter = attemptCounter - 1
+      u = nil
     end
 
-    ForGroup(this.unitGroup, IsIdle)
+    if( (level == 5) and not(this.upgradesFinished) ) then
+      AbominationManager.healthMultiplier = 600
+      this.DoUpgrades()
+    end
 
+    -- Make all the lazy monsters attack!
+    local g = CreateGroup()
+    GroupEnumUnitsOfPlayer(g, this.player, nil)
+    ForGroup(g, IsIdle)
+    DestroyGroup(g)
+    g = nil
   end
 
   function this.DoUpgrades()
@@ -316,8 +338,24 @@ function this.Init()
   table.insert(this.AbominationList, this.secondAbomination)
   table.insert(this.AbominationList, this.thirdAbomination)
   table.insert(this.AbominationList, this.fourthAbomination)
+
+  -- Remove Abomination Starting Units:
+  for k,v in ipairs(this.AbominationList) do
+    local function RemoveAbominableUnit()
+      local u = GetEnumUnit()
+      RemoveUnit(u)
+      u = nil
+    end
+
+    local g = CreateGroup()
+    GroupEnumUnitsOfPlayer(g, v.player, nil)
+    ForGroup(g, RemoveAbominableUnit)
+    DestroyGroup(g)
+    g = nil
+  end
 end
 
+-- Main processing should be done here.
 function this.AbominationHandler()
   local currentElapsedSeconds = GameClock.GetElapsedSeconds()
 
@@ -326,6 +364,8 @@ function this.AbominationHandler()
   end
 
   this.AbominationSpawn(this.level)
+
+  -- if a defender has lost all his units, give the respective abomination a new target defender
 end
 
   -- This function is useful for debugging.
@@ -758,42 +798,68 @@ function Init()
   xpcall(BlzChangeMinimapTerrainTex("war3mapImported\\castle.blp"), print)
   print("end loading minimap")
 
-  print("GameClockInit Start")
+  --print("GameClockInit Start")
   xpcall(GameClock.Init, print)
-  print("GameClockInit End")
+  --print("GameClockInit End")
 
-  print("CommandManagerInit Start")
+  --print("CommandManagerInit Start")
   xpcall(CommandManager.Init, print)
-  print("CommandManagerInit End")
+  --print("CommandManagerInit End")
 
-  print("UnitList_Init start")
+  --print("UnitList_Init start")
   xpcall(UnitList_Init, print)
-  print("UnitList_Init end")
+  --print("UnitList_Init end")
 
-  print("UpgradeList_Init start")
+  --print("UpgradeList_Init start")
   xpcall(UpgradeList_Init, print)
-  print("UpgradeList_Init end")
+  --print("UpgradeList_Init end")
 
   -- print("TestManager TestHumanUnits start")
   -- xpcall(TestManager.Test_HumanUnits, print)
   -- print("TestManager TestHumanUnits end")
 
-  print("AbominationManagerInit start")
+  --print("AbominationManagerInit start")
   xpcall(AbominationManager.Init, print)
-  print("AbominationManagerInit end")
+  --print("AbominationManagerInit end")
 
-  print("DefenderManagerInit start")
+  --print("DefenderManagerInit start")
   xpcall(DefenderManager.Init, print)
-  print("DefenderManagerInit end")
+  --print("DefenderManagerInit end")
 
-  print("TheLastDefenseInit start")
+  --print("TheLastDefenseInit start")
   xpcall(TheLastDefense.Init, print)
-  print("TheLastDefenseInit end")
+  --print("TheLastDefenseInit end")
 
   print("Init End")
 end
 
 Utility = {}
+
+
+--[[ Definition of Point ]]
+Utility.Point = {}
+
+function Utility.Point.Create(x, y)
+  local this = {}
+  this.x = x
+  this.y = y
+
+  function this.IsInRange(xMin, xMax, yMin, yMax)
+    local isInRange = true
+    if( not((xMin <= this.x) and (this.x <= xMax)) ) then
+      isInRange = false
+    end
+    if( not((yMin <= this.y) and (this.y <= yMax)) ) then
+      isInRange = false
+    end
+    return isInRange
+  end
+
+  return this
+end
+
+-- End Definition of Point
+
 
 function Utility.TriggerRegisterAllPlayersChat(which_trigger, message)
   local all_players = (bj_MAX_PLAYER_SLOTS + 1 )
@@ -819,29 +885,33 @@ function Utility.TableMerge(t1, t2)
   end
 end
 
---[[ Definition of Point ]]
-Utility.Point = {}
 
-function Utility.Point.Create(x, y)
-  local this = {}
-  this.x = x
-  this.y = y
-
-  function this.IsInRange(xMin, xMax, yMin, yMax)
-    local isInRange = true
-    if( not((xMin <= this.x) and (this.x <= xMax)) ) then
-      isInRange = false
+-- Unit Group Functions:
+function Utility.RemoveDeadUnitsFromGroup(unitGroup)
+  local function RemoveDeadUnits()
+    local u = GetEnumUnit()
+    if(IsUnitType(u, UNIT_TYPE_DEAD)) then
+      GroupRemoveUnit(unitGroup, u)
     end
-    if( not((yMin <= this.y) and (this.y <= yMax)) ) then
-      isInRange = false
-    end
-    return isInRange
+    u = nil
   end
 
-  return this
+  ForGroup(unitGroup, RemoveDeadUnits)
 end
 
--- End Definition of Point
+function Utility.AttackRandomUnitOfPlayer(commandedUnit, targetPlayer)
+  local g = CreateGroup()
+  GroupEnumUnitsOfPlayer(g, targetPlayer, nil)
+  
+  local u = GroupPickRandomUnit(g)
+  IssueTargetOrder(commandedUnit, "attack", u)
+  
+  DestroyGroup(g)
+  g = nil
+  u = nil
+end
+
+-- End Unit Group Functions
 TestManager = {}
 
 local this = TestManager
