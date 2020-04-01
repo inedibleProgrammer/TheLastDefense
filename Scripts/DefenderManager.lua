@@ -11,6 +11,7 @@ function Defender.Create(player, name, startingPoint)
   this.player = player
   this.name = name
   this.startingPoint = startingPoint
+  this.alive = false
 
   return this
 end
@@ -45,6 +46,7 @@ function this.InitializeDefenders()
       local player = GetOwningPlayer(u)
       local playerName = GetPlayerName(player)
       local defender = Defender.Create(player, playerName, defenderStartingPoint)
+      defender.alive = true
       table.insert(this.DefenderList, defender)
     end
   end
