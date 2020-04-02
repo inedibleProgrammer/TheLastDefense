@@ -65,6 +65,6 @@ end
 -- This function is useful for debugging.
 function this.PrintDefenderNames()
   for k,v in ipairs(this.DefenderList) do 
-    print("Defender: " .. v.name .. " " .. v.startingPoint.x .. " " .. v.startingPoint.y)
+    print("Defender: " .. v.name .. ";" .. v.startingPoint.x .. ";" .. v.startingPoint.y .. ";" .. tostring(v.alive))
   end
 end

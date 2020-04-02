@@ -126,7 +126,7 @@ end
 function this.PrintAbominationNames()
   for k,v in ipairs(this.AbominationList) do 
     if(v.active) then
-      print("Abomination: " .. v.name .. " " .. v.objectivePoint.x .. " " .. v.objectivePoint.y)
+      print("Abomination: " .. v.name .. ";" .. v.objectivePoint.x .. ";" .. v.objectivePoint.y .. ";" .. GetPlayerId(v.targetPlayer))
     end
   end
 end

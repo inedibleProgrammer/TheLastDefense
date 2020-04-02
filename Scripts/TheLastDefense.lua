@@ -9,7 +9,7 @@ this.gameParameters = {}
 this.gameParameters.spawnPeriod = 10 -- Seconds
 this.gameParameters.burstPeriod = 30 -- Seconds
 this.gameParameters.upgradePeriod = 300 -- Seconds
-this.gameParameters.healthMultiplier = 100 -- HP, Are there units with less than this * level?
+this.gameParameters.healthMultiplier = 800 -- HP, Are there units with less than this * level?
 this.gameParameters.level = 1 -- Scale monster spawning
 this.gameParameters.upgradesFinished = false
 this.gameParameters.unitSteroidEnabled = false -- Start adding HP to units
@@ -50,14 +50,16 @@ function this.TheLastDefenseHandler()
   end
 
   -- After a certain point, we should ramp up the difficulty:
-  if( (this.gameParameters.level == 5) and not(this.gameParameters.upgradesFinished) ) then
+  if( (this.gameParameters.level == 4) and not(this.gameParameters.upgradesFinished) ) then
+    print("Upgrades finished")
     this.gameParameters.healthMultiplier = 600
     this.DoUpgrades()
   end  
 
   -- Time to apply steroids?
-  if( this.gameParameters.level == 7 and not(this.gameParameters.unitSteroidEnabled) ) then
-    unitSteroidEnabled = true
+  if( this.gameParameters.level == 6 and not(this.gameParameters.unitSteroidEnabled) ) then
+    print("Steroids On")
+    this.gameParameters.unitSteroidEnabled = true
   end
 
 
@@ -81,8 +83,10 @@ end
 function this.DoUpgrades()
   this.gameParameters.upgradesFinished = true
 
-  for k,v in ipairs(AllRacesUpgradeList) do
-    AddPlayerTechResearched(this.player, FourCC(v), 3)
+  for _,abom in ipairs(AbominationManager.AbominationList) do
+    for _,upg in ipairs(AllRacesUpgradeList) do
+      AddPlayerTechResearched(abom.player, FourCC(upg), 3)
+    end
   end
 end
 
@@ -90,7 +94,8 @@ end
 function this.DetermineLivingDefenders()
   for k,v in ipairs(DefenderManager.DefenderList) do
     local unitsRemaining = GetPlayerUnitCount(v.player, true)
-    if(unitsRemaining <= 0) then
+    if( v.alive and (unitsRemaining <= 0) ) then
+      print("Player dead")
       v.alive = false
     end
   end
@@ -102,8 +107,13 @@ function this.UpdateAbominationTargets()
     if(unitsRemaining <= 0) then
       local randomInt = GetRandomInt(1, #DefenderManager.DefenderList)
       if(DefenderManager.DefenderList[randomInt].alive) then
+        print("new target")
         v.targetPlayer = DefenderManager.DefenderList[randomInt].player
       end
     end
   end
+end
+
+function this.PrintGameParameters()
+  print("P: " .. this.gameParameters.level .. ";" .. tostring(this.gameParameters.upgradesFinished) .. ";" .. tostring(this.gameParameters.unitSteroidEnabled) .. ";" .. this.gameParameters.unitSteroidCounter)
 end

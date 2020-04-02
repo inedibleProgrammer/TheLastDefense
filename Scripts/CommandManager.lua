@@ -38,6 +38,8 @@ function this.CommandHandler()
     this.Command_PrintAbominations()
   elseif(commandData.tokens[2] == "defenders") then
     this.Command_PrintDefenders()
+  elseif(commandData.tokens[2] == "parameters") then
+    this.Command_PrintGameParameters()
   else
     -- Do nothing.
   end
@@ -72,4 +74,8 @@ end
 
 function this.Command_PrintDefenders()
   DefenderManager.PrintDefenderNames()
+end
+
+function this.Command_PrintGameParameters()
+  TheLastDefense.PrintGameParameters()
 end
