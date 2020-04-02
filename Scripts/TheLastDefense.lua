@@ -6,10 +6,10 @@ local this = TheLastDefense
 
 this.gameParameters = {}
 
-this.gameParameters.spawnPeriod = 10 -- Seconds
-this.gameParameters.burstPeriod = 30 -- Seconds
+this.gameParameters.spawnPeriod = 5 -- Seconds
+this.gameParameters.burstPeriod = 15 -- Seconds
 this.gameParameters.upgradePeriod = 300 -- Seconds
-this.gameParameters.healthMultiplier = 800 -- HP, Are there units with less than this * level?
+this.gameParameters.healthMultiplier = 100 -- HP, Are there units with less than this * level?
 this.gameParameters.level = 1 -- Scale monster spawning
 this.gameParameters.upgradesFinished = false
 this.gameParameters.unitSteroidEnabled = false -- Start adding HP to units
@@ -51,14 +51,12 @@ function this.TheLastDefenseHandler()
 
   -- After a certain point, we should ramp up the difficulty:
   if( (this.gameParameters.level == 4) and not(this.gameParameters.upgradesFinished) ) then
-    print("Upgrades finished")
     this.gameParameters.healthMultiplier = 600
     this.DoUpgrades()
   end  
 
   -- Time to apply steroids?
   if( this.gameParameters.level == 6 and not(this.gameParameters.unitSteroidEnabled) ) then
-    print("Steroids On")
     this.gameParameters.unitSteroidEnabled = true
   end
 

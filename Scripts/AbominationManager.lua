@@ -23,14 +23,13 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
     local attemptCounter = 10
 
     if(gameParameters.level < 3) then -- Trying to help with lag
-      attemptCounter = 3
+      attemptCounter = 1
     end
 
     -- Select a random unit that is not a hero, and meets the level restraint:
     while( ((isHero == true) or (levelRestraint == true)) and (attemptCounter >= 0) ) do
       local r = GetRandomInt(1, #AllUnitList)
       local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
-      this.ApplyUnitModifications(u, gameParameters)
 
       -- Conditions for an undesirable unit:
       isHero = IsHeroUnitId(GetUnitTypeId(u))
@@ -41,6 +40,8 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
         RemoveUnit(u)
       end
 
+      this.ApplyUnitModifications(u, gameParameters)
+
       attemptCounter = attemptCounter - 1
       u = nil
     end
@@ -50,9 +51,6 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
       local idleUnit = GetEnumUnit()
       if(not(GetUnitCurrentOrder(idleUnit) == 851983)) then
         Utility.AttackRandomUnitOfPlayer(idleUnit, this.targetPlayer)
-        if((idleUnit == nil) or (this.targetPlayer == nil)) then
-          print("It's nil")
-        end
       end
       idleUnit = nil
     end
