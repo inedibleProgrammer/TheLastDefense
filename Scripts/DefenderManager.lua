@@ -21,13 +21,29 @@ end
 -- End Defender Definition
 
 function this.Init()
-  --[[ Get Defender starting locations: ]]
+    --[[ Get Defender starting locations: ]]
     -- for each player (red, blue, teal, purple)
     --   Find the Point for their main base and create a defender with that Point as their starting location
     --   if that player does not exist,
     --     Delete their goldmine
 
-  this.InitializeDefenders()
+    this.InitializeDefenders()
+
+  --[[ Load AI for the defenders that are AI controlled: ]]
+  for k,v in ipairs(DefenderManager.DefenderList) do
+    if( GetPlayerController(v.player) == MAP_CONTROL_COMPUTER ) then
+      if( GetPlayerRace(v.player) == RACE_HUMAN ) then
+        PickMeleeAI(v.player, "human.ai", nil, nil)
+      elseif( GetPlayerRace(v.player) == RACE_ORC ) then
+        PickMeleeAI(v.player, "orc.ai", nil, nil)
+      elseif( GetPlayerRace(v.player) == RACE_UNDEAD ) then
+        PickMeleeAI(v.player, "undead.ai", nil, nil)
+      elseif( GetPlayerRace(v.player) == RACE_NIGHTELF ) then
+        PickMeleeAI(v.player, "elf.ai", nil, nil)
+      end
+      ShareEverythingWithTeamAI(v.player)
+    end
+  end
 end
 
 function this.InitializeDefenders()

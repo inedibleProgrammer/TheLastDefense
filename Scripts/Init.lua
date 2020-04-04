@@ -25,9 +25,13 @@ function Init()
   xpcall(UpgradeList_Init, print)
   --print("UpgradeList_Init end")
 
-  -- print("TestManager TestHumanUnits start")
-  -- xpcall(TestManager.Test_HumanUnits, print)
-  -- print("TestManager TestHumanUnits end")
+  --print("ItemList_Init start")
+  xpcall(ItemList_Init, print)
+  --print("ItemList_Init end")
+
+  print("TestManager_Init start")
+  xpcall(TestManager.Test_Init, print)
+  print("TestManager_Init end")
 
   --print("AbominationManagerInit start")
   xpcall(AbominationManager.Init, print)

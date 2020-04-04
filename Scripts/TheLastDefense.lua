@@ -31,6 +31,22 @@ function this.Init()
     TriggerRegisterPlayerUnitEvent(this.killCountingTrigger, v.player, EVENT_PLAYER_UNIT_DEATH, nil)
   end
 
+  --[[ Load AI for the defenders that are AI controlled: ]]
+  for k,v in ipairs(DefenderManager.DefenderList) do
+    if( GetPlayerController(v.player) == MAP_CONTROL_COMPUTER ) then
+      if( GetPlayerRace(v.player) == RACE_HUMAN ) then
+        PickMeleeAI(v.player, "human.ai", nil, nil)
+      elseif( GetPlayerRace(v.player) == RACE_ORC ) then
+        PickMeleeAI(v.player, "orc.ai", nil, nil)
+      elseif( GetPlayerRace(v.player) == RACE_UNDEAD ) then
+        PickMeleeAI(v.player, "undead.ai", nil, nil)
+      elseif( GetPlayerRace(v.player) == RACE_NIGHTELF ) then
+        PickMeleeAI(v.player, "elf.ai", nil, nil)
+      end
+      ShareEverythingWithTeamAI(v.player)
+    end
+  end
+
   -- Assign abominations their targets
   this.InitializeAbominations()
 
