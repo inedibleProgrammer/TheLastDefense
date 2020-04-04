@@ -19,8 +19,8 @@ function Multiboard.Create(title, nRows, nColumns)
     this.initialized = true
     this.board = CreateMultiboard()
 
-    MultiboardSetColumnCount(this.board, this.nRows)
     MultiboardSetRowCount(this.board, this.nColumns)
+    MultiboardSetColumnCount(this.board, this.nRows)
     MultiboardSetTitleText(this.board, this.title)
   end
 
@@ -35,11 +35,20 @@ function Multiboard.Create(title, nRows, nColumns)
     mbi = nil
   end
 
-  function this.SetStyle(i, place, width)
+  function this.SetStyle(row, column, width)
+    local mbi = MultiboardGetItem(this.board, row, column)
+      MultiboardSetItemStyle(mbi, true, false)
+      MultiboardSetItemWidth(mbi, width)
+      MultiboardReleaseItem(mbi)
+    mbi = nil
   end
 
   function this.Display(show)
     MultiboardDisplay(this.board, show)
+  end
+
+  function this.Minimize(show)
+    MultiboardMinimize(this.board, show)
   end
 
 

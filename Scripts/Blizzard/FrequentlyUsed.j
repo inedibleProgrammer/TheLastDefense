@@ -10,3 +10,6 @@ native BlzGetUnitArmor                             takes unit whichUnit returns 
 native BlzSetUnitArmor                             takes unit whichUnit, real armorAmount returns nothing
 
 native BlzSetUnitRealField                         takes unit whichUnit, unitrealfield whichField, real value returns boolean -- 4142
+
+
+native BlzChangeMinimapTerrainTex                  takes string texFile returns boolean

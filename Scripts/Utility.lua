@@ -69,7 +69,8 @@ function Utility.AttackRandomUnitOfPlayer(commandedUnit, targetPlayer)
   GroupEnumUnitsOfPlayer(g, targetPlayer, nil)
   
   local u = GroupPickRandomUnit(g)
-  IssueTargetOrder(commandedUnit, "attack", u)
+  -- IssueTargetOrder(commandedUnit, "attack", u)
+  IssuePointOrder(commandedUnit, "attack", GetUnitX(u), GetUnitY(u))
   
   DestroyGroup(g)
   g = nil

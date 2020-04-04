@@ -15,6 +15,8 @@ this.gameParameters.unitSteroidEnabled = false -- Start adding HP to units
 this.gameParameters.unitSteroidCounter = 1 -- Add 100 * this counter HP to units
 
 this.multiboard = nil
+this.multiboard_initialized = false
+this.multiboard_rows = 0
 
 function this.Init()
   --[[ Initialize Timer: ]]
@@ -22,11 +24,18 @@ function this.Init()
   TriggerAddAction(this.clockTrigger, this.TheLastDefenseHandler)
   TriggerRegisterTimerEvent(this.clockTrigger, 1.00, true)
 
+  --[[ Initialize Trigger that counts kills: ]]
+  this.killCountingTrigger = CreateTrigger()
+  TriggerAddAction(this.killCountingTrigger, this.KillCountingHandler)
+  for k,v in ipairs(AbominationManager.AbominationList) do
+    TriggerRegisterPlayerUnitEvent(this.killCountingTrigger, v.player, EVENT_PLAYER_UNIT_DEATH, nil)
+  end
+
   -- Assign abominations their targets
   this.InitializeAbominations()
 
   -- Get a multiboard:
-  this.multiboard = MultiboardManager.GetBoard("MyFirstBoard", 1, 1) 
+  -- this.multiboard = MultiboardManager.GetBoard("MyFirstBoard", 1, 1) 
 end
 
 -- This should be turned into a state machine.
@@ -34,16 +43,47 @@ function this.TheLastDefenseHandler()
   local currentElapsedSeconds = GameClock.GetElapsedSeconds()
 
   -- Initialize the multiboard:
-  if( (ModuloInteger(currentElapsedSeconds, 5) == 0) and not(this.multiboard.initialized) ) then
+  if( (ModuloInteger(currentElapsedSeconds, 5) == 0) and not(this.multiboard_initialized) ) then
     print("Creating Board")
+    this.multiboard_initialized = true
     
-    this.multiboard.Initialize()
-    this.multiboard.Display(true)
+    this.multiboard = CreateMultiboardBJ(2, DefenderManager.defenderCount + 1, "ScoreBoard")
+    MultiboardMinimizeBJ(true, this.multiboard)
+    MultiboardSetItemStyleBJ(this.multiboard, 0, 0, true, false)
+    MultiboardSetItemWidthBJ(this.multiboard, 0, 0, 10)
 
-    this.multiboard.SetItem(0, 0, "Test")
+    for k,v in ipairs(DefenderManager.DefenderList) do
+      MultiboardSetItemValueBJ(this.multiboard, 1, k, "|c" .. ColorList[ColorActions.NumberToColorString(GetPlayerId(v.player) + 1)].hex_code ..GetPlayerName(v.player) .. "|r")
+      this.multiboard_rows = this.multiboard_rows + 1
+    end
 
+    MultiboardSetItemValueBJ(this.multiboard, 1, this.multiboard_rows + 1, "|c" .. ColorList.gold.hex_code .. "GameTime:" .. "|r")
+
+    -- MultiboardSetItemValueBJ(this.multiboard, 1, 1, "Test")
+    -- MultiboardSetItemValueBJ(this.multiboard, 2, 1, "|c" .. ColorList.light_blue.hex_code .. "Test2" .. "|r")
+    -- this.multiboard.Initialize()
+    -- this.multiboard.Display(true)
+    -- this.multiboard.Minimize(true)
+    
+    -- this.multiboard.SetStyle(0, 0, 0.14)
+    -- this.multiboard.SetItem(0, 0, "|c" .. ColorList.light_blue.hex_code .. "Test" .. "|r")
+
+    -- MultiboardSetItemStyleBJ(this.multiboard.board, 1, 1, true, false)
+    -- MultiboardSetItemWidthBJ(this.multiboard.board, )
     
   end
+
+  -- Update ScoreBoard:
+
+  if(this.multiboard_initialized) then
+    for k,v in ipairs(DefenderManager.DefenderList) do
+      MultiboardSetItemValueBJ(this.multiboard, 2, k, tostring(v.killCount))
+    end
+    MultiboardSetItemValueBJ(this.multiboard, 2, this.multiboard_rows + 1, tostring(GameClock.hours) .. ":" .. tostring(GameClock.minutes) .. ":" .. tostring(GameClock.seconds))
+  end
+
+
+  
 
   if(ModuloInteger(currentElapsedSeconds, this.gameParameters.upgradePeriod) == 0) then
     this.gameParameters.level = this.gameParameters.level + 1
@@ -82,6 +122,15 @@ function this.TheLastDefenseHandler()
   this.UpdateAbominationTargets()
 end
 
+function this.KillCountingHandler()
+  local p = GetOwningPlayer(GetKillingUnit())
+
+  for k,v in ipairs(DefenderManager.DefenderList) do
+    if(v.player == p) then
+      v.killCount = v.killCount + 1
+    end
+  end
+end
 
 function this.InitializeAbominations()
   --[[ For every player in the game, there needs to be an abomination targeting that player ]]

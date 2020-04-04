@@ -2,6 +2,7 @@ DefenderManager = {}
 
 local this = DefenderManager
 this.DefenderList = {}
+this.defenderCount = 0
 
 --[[ Definition of a Defender: ]]
 local Defender = {}
@@ -12,6 +13,7 @@ function Defender.Create(player, name, startingPoint)
   this.name = name
   this.startingPoint = startingPoint
   this.alive = false
+  this.killCount = 0
 
   return this
 end
@@ -47,6 +49,7 @@ function this.InitializeDefenders()
       local playerName = GetPlayerName(player)
       local defender = Defender.Create(player, playerName, defenderStartingPoint)
       defender.alive = true
+      this.defenderCount = this.defenderCount + 1
       table.insert(this.DefenderList, defender)
     end
   end
