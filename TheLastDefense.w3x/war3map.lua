@@ -3,6 +3,9 @@ gg_trg_KillRandomUnitInGroup = nil
 gg_trg_CreateUnitAndAttackGround = nil
 gg_trg_Melee_Initialization = nil
 gg_trg_CallInit = nil
+gg_trg_HealUnit = nil
+gg_unit_nten_0015 = nil
+gg_trg_camera = nil
 function InitGlobals()
 end
 
@@ -119,9 +122,82 @@ TheLastDefense = {}
 
 local this = TheLastDefense
 
+this.gameParameters = {}
+this.gameParameters.spawnPeriod = 10 -- Seconds
+this.gameParameters.burstPeriod = 30 -- Seconds
+this.gameParameters.upgradePeriod = 180 -- Seconds
+this.gameParameters.healthMultiplier = 100 -- HP, Are there units with less than this * level?
+this.gameParameters.level = 1 -- Scale monster spawning
+this.gameParameters.upgradesFinished = false
+this.gameParameters.unitSteroidEnabled = false -- Start adding HP to units
+this.gameParameters.unitSteroidCounter = 1 -- Add 100 * this counter HP to units
+
+this.multiboard = nil
 
 function this.Init()
+  --[[ Initialize Timer: ]]
+  this.clockTrigger = CreateTrigger()
+  TriggerAddAction(this.clockTrigger, this.TheLastDefenseHandler)
+  TriggerRegisterTimerEvent(this.clockTrigger, 1.00, true)
+
+  -- Assign abominations their targets
   this.InitializeAbominations()
+
+  -- Get a multiboard:
+  this.multiboard = MultiboardManager.GetBoard("MyFirstBoard", 1, 1) 
+end
+
+-- This should be turned into a state machine.
+function this.TheLastDefenseHandler()
+  local currentElapsedSeconds = GameClock.GetElapsedSeconds()
+
+  -- Initialize the multiboard:
+  if( (ModuloInteger(currentElapsedSeconds, 5) == 0) and not(this.multiboard.initialized) ) then
+    print("Creating Board")
+    
+    this.multiboard.Initialize()
+    this.multiboard.Display(true)
+
+    this.multiboard.SetItem(0, 0, "Test")
+
+    
+  end
+
+  if(ModuloInteger(currentElapsedSeconds, this.gameParameters.upgradePeriod) == 0) then
+    this.gameParameters.level = this.gameParameters.level + 1
+
+    if(this.gameParameters.unitSteroidEnabled) then
+      this.gameParameters.unitSteroidCounter = this.gameParameters.unitSteroidCounter + 1
+    end
+  end
+
+  if(ModuloInteger(currentElapsedSeconds, this.gameParameters.spawnPeriod) == 0) then
+    AbominationManager.AbominationSpawn(this.gameParameters)
+  end
+
+  if(ModuloInteger(currentElapsedSeconds, this.gameParameters.burstPeriod) == 0) then
+    AbominationManager.AbominationSpawn(this.gameParameters)
+    AbominationManager.AbominationSpawn(this.gameParameters)
+    AbominationManager.AbominationSpawn(this.gameParameters)
+  end
+
+  -- After a certain point, we should ramp up the difficulty:
+  if( (this.gameParameters.level == 5) and not(this.gameParameters.upgradesFinished) ) then
+    this.gameParameters.healthMultiplier = 200
+    this.DoUpgrades()
+  end
+
+  -- Time to apply steroids?
+  if( this.gameParameters.level == 7 and not(this.gameParameters.unitSteroidEnabled) ) then
+    this.gameParameters.unitSteroidEnabled = true
+  end
+
+
+  -- if a defender has lost all his units he is dead
+  this.DetermineLivingDefenders()
+
+  -- give the respective abomination of a dead defender a new living target defender
+  this.UpdateAbominationTargets()
 end
 
 
@@ -132,6 +208,47 @@ function this.InitializeAbominations()
     AbominationManager.AbominationList[k].objectivePoint = v.startingPoint
     AbominationManager.AbominationList[k].targetPlayer = v.player
   end
+end
+
+function this.DoUpgrades()
+  this.gameParameters.upgradesFinished = true
+
+  for _,abom in ipairs(AbominationManager.AbominationList) do
+    for _,upg in ipairs(AllRacesUpgradeList) do
+      AddPlayerTechResearched(abom.player, FourCC(upg), 3)
+    end
+  end
+end
+
+
+function this.DetermineLivingDefenders()
+  for k,v in ipairs(DefenderManager.DefenderList) do
+    local unitsRemaining = GetPlayerUnitCount(v.player, true)
+    if( v.alive and (unitsRemaining <= 0) ) then
+      print("Player dead")
+      v.alive = false
+    end
+  end
+end
+
+function this.UpdateAbominationTargets()
+  for k,v in ipairs(AbominationManager.AbominationList) do
+    local unitsRemaining = GetPlayerUnitCount(v.targetPlayer, true) -- Abominations don't have a reference to their defender. Only the player.
+    if(unitsRemaining <= 0) then
+      local randomInt = GetRandomInt(1, #DefenderManager.DefenderList)
+      if(DefenderManager.DefenderList[randomInt].alive) then
+        print("new target")
+        v.targetPlayer = DefenderManager.DefenderList[randomInt].player
+      end
+    end
+  end
+end
+
+function this.PrintGameParameters()
+  print("P: " .. this.gameParameters.level .. ";" .. tostring(this.gameParameters.upgradesFinished) .. ";" .. tostring(this.gameParameters.unitSteroidEnabled) .. ";" .. this.gameParameters.unitSteroidCounter)
+end
+
+function this.InitializeMultiboard()
 end
 DefenderManager = {}
 
@@ -146,6 +263,7 @@ function Defender.Create(player, name, startingPoint)
   this.player = player
   this.name = name
   this.startingPoint = startingPoint
+  this.alive = false
 
   return this
 end
@@ -180,13 +298,14 @@ function this.InitializeDefenders()
       local player = GetOwningPlayer(u)
       local playerName = GetPlayerName(player)
       local defender = Defender.Create(player, playerName, defenderStartingPoint)
+      defender.alive = true
       table.insert(this.DefenderList, defender)
     end
   end
 
   -- this.InitializeDefenders() starts here:
   local g
-  for i=0,3 do
+  for i=0,3 do -- For each possible human player
     g = CreateGroup()
     GroupEnumUnitsOfPlayer(g, Player(i), nil) -- What if the player isn't in the game? Will GroupEnumUnitsOfPlayer handle that?
     ForGroup(g, FindMainBase)
@@ -198,16 +317,13 @@ end
 -- This function is useful for debugging.
 function this.PrintDefenderNames()
   for k,v in ipairs(this.DefenderList) do 
-    print("Defender: " .. v.name .. " " .. v.startingPoint.x .. " " .. v.startingPoint.y)
+    print("Defender: " .. v.name .. ";" .. v.startingPoint.x .. ";" .. v.startingPoint.y .. ";" .. tostring(v.alive))
   end
 end
 AbominationManager = {}
 
 local this = AbominationManager
-this.spawnPeriod = 5 -- Seconds
-this.upgradePeriod = 300 -- Seconds
-this.healthMultiplier = 100 -- HP
-this.level = 1 -- Scale monster spawning
+
 this.AbominationList = {}
 
 -- Definition of Abomination:
@@ -221,36 +337,35 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
   this.targetPlayer = targetPlayer -- The player to be targeted by the abomination.
   this.objectivePoint = Utility.Point.Create(0.0, 0.0)
   this.active = false
-  this.unit = nil
   this.upgradesFinished = false
 
-  function this.SpawnRandomUnit(level)    
+  function this.SpawnRandomUnit(gameParameters)    
     local isHero = true
     local levelRestraint = true
     local attemptCounter = 10
+
+    if(gameParameters.level < 3) then -- Trying to help with lag
+      attemptCounter = 1
+    end
 
     -- Select a random unit that is not a hero, and meets the level restraint:
     while( ((isHero == true) or (levelRestraint == true)) and (attemptCounter >= 0) ) do
       local r = GetRandomInt(1, #AllUnitList)
       local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
-      SetUnitCreepGuard(u, false)
-      RemoveGuardPosition(u)
+
       -- Conditions for an undesirable unit:
       isHero = IsHeroUnitId(GetUnitTypeId(u))
-      levelRestraint = (BlzGetUnitMaxHP(u) > (level * AbominationManager.healthMultiplier))
+      levelRestraint = (BlzGetUnitMaxHP(u) > (gameParameters.level * gameParameters.healthMultiplier))
 
-      -- If the unit is desirable, then it hasn't been removed and we should tell it to attack:
+      -- If the unit is desirable, remove it.
       if(levelRestraint or isHero) then
         RemoveUnit(u)
       end
 
+      this.ApplyUnitModifications(u, gameParameters)
+
       attemptCounter = attemptCounter - 1
       u = nil
-    end
-
-    if( (level == 5) and not(this.upgradesFinished) ) then
-      AbominationManager.healthMultiplier = 600
-      this.DoUpgrades()
     end
 
     -- Make all the lazy monsters attack!
@@ -258,9 +373,6 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
       local idleUnit = GetEnumUnit()
       if(not(GetUnitCurrentOrder(idleUnit) == 851983)) then
         Utility.AttackRandomUnitOfPlayer(idleUnit, this.targetPlayer)
-        if((idleUnit == nil) or (this.targetPlayer == nil)) then
-          print("It's nil")
-        end
       end
       idleUnit = nil
     end
@@ -272,11 +384,15 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
     g = nil
   end
 
-  function this.DoUpgrades()
-    this.upgradesFinished = true
+  function this.ApplyUnitModifications(relevantUnit, gameParameters)
+    SetUnitCreepGuard(relevantUnit, false)
+    RemoveGuardPosition(relevantUnit)
 
-    for k,v in ipairs(AllRacesUpgradeList) do
-      AddPlayerTechResearched(this.player, FourCC(v), 3)
+    if(gameParameters.unitSteroidEnabled) then
+      local currentHP = BlzGetUnitMaxHP(relevantUnit)
+      currentHP = currentHP + (100 * gameParameters.unitSteroidCounter)
+      BlzSetUnitMaxHP(relevantUnit, currentHP)
+      SetUnitLifePercentBJ(relevantUnit, 100.0)
     end
   end
 
@@ -285,11 +401,6 @@ end
 -- End Abomination
 
 function this.Init()
-  --[[ Initialize Timer: ]]
-  this.clockTrigger = CreateTrigger()
-  TriggerAddAction(this.clockTrigger, this.AbominationHandler)
-  TriggerRegisterTimerEvent(this.clockTrigger, 1.00, true)
-
   --[[ Initialize Abominations: ]]
   -- Abominations have fixed starting locations, so hard-code their spawn points.
 
@@ -331,42 +442,27 @@ function this.Init()
   end
 end
 
--- Main processing should be done here.
-function this.AbominationHandler()
-  local currentElapsedSeconds = GameClock.GetElapsedSeconds()
-
-  if(ModuloInteger(currentElapsedSeconds, this.upgradePeriod) == 0) then
-    this.level = this.level + 1
-  end
-
-  this.AbominationSpawn(this.level)
-
-  -- if a defender has lost all his units, give the respective abomination a new target defender
-end
-
   -- This function is useful for debugging.
 function this.PrintAbominationNames()
   for k,v in ipairs(this.AbominationList) do 
     if(v.active) then
-      print("Abomination: " .. v.name .. " " .. v.objectivePoint.x .. " " .. v.objectivePoint.y)
+      print("Abomination: " .. v.name .. ";" .. v.objectivePoint.x .. ";" .. v.objectivePoint.y .. ";" .. GetPlayerId(v.targetPlayer))
     end
   end
 end
 
-function this.AbominationSpawn(level)
+function this.AbominationSpawn(gameParameters)
   for k,v in ipairs(this.AbominationList) do
     if(v.active) then
-      if(ModuloInteger(GameClock.GetElapsedSeconds(), 10) == 0) then
-        v.SpawnRandomUnit(level)
-      end
-      if(ModuloInteger(GameClock.GetElapsedSeconds(), 30) == 0) then
-        v.SpawnRandomUnit(level)
-        v.SpawnRandomUnit(level)
-        v.SpawnRandomUnit(level)
-      end
+      v.SpawnRandomUnit(gameParameters)
     end
   end
 end
+
+
+
+
+
 ColorActions = {}
 
 function ColorActions.ColorStringToNumber(color)
@@ -686,6 +782,10 @@ function this.CommandHandler()
     this.Command_PrintAbominations()
   elseif(commandData.tokens[2] == "defenders") then
     this.Command_PrintDefenders()
+  elseif(commandData.tokens[2] == "parameters") then
+    this.Command_PrintGameParameters()
+  elseif(commandData.tokens[2] == "cam") then
+    this.Command_CameraAdjust(commandData)
   else
     -- Do nothing.
   end
@@ -720,6 +820,19 @@ end
 
 function this.Command_PrintDefenders()
   DefenderManager.PrintDefenderNames()
+end
+
+function this.Command_PrintGameParameters()
+  TheLastDefense.PrintGameParameters()
+end
+
+function this.Command_CameraAdjust(commandData)
+  local distance = tonumber(commandData.tokens[3])
+  if( not(distance == nil) ) then
+    if( (distance >= 500) and (distance <= 3000) ) then
+      SetCameraFieldForPlayer(commandData.commandingPlayer, CAMERA_FIELD_TARGET_DISTANCE, distance, 1.00)
+    end
+  end
 end
 GameClock = {}
 
@@ -770,9 +883,9 @@ end
 function Init()
   print("Init Start")
 
-  print("loading minimap")
+  --print("loading minimap")
   xpcall(BlzChangeMinimapTerrainTex("war3mapImported\\castle.blp"), print)
-  print("end loading minimap")
+  --print("end loading minimap")
 
   --print("GameClockInit Start")
   xpcall(GameClock.Init, print)
@@ -801,6 +914,10 @@ function Init()
   --print("DefenderManagerInit start")
   xpcall(DefenderManager.Init, print)
   --print("DefenderManagerInit end")
+
+  --print("MultiboardManagerInit start")
+  xpcall(MultiboardManager.Init, print)
+  --print("MultiboardManagerInit end")
 
   --print("TheLastDefenseInit start")
   xpcall(TheLastDefense.Init, print)
@@ -901,6 +1018,68 @@ function this.Test_HumanUnits()
 end
 
 -- CreateNUnitsAtLoc(1, FourCC(unit), Player(0), GetRectCenter(GetPlayableMapRect()), bj_UNIT_FACING)
+MultiboardManager = {}
+
+local this = MultiboardManager
+
+this.MultiboardList = {}
+
+local Multiboard = {}
+
+--[[ Definition of a multiboard: ]]
+function Multiboard.Create(title, nRows, nColumns)
+  local this = {}
+  this.title = title
+  this.nRows = nRows
+  this.nColumns = nColumns
+  this.initialized = false
+  this.board = nil
+
+  function this.Initialize()
+    this.initialized = true
+    this.board = CreateMultiboard()
+
+    MultiboardSetColumnCount(this.board, this.nRows)
+    MultiboardSetRowCount(this.board, this.nColumns)
+    MultiboardSetTitleText(this.board, this.title)
+  end
+
+  function this.Terminate()
+
+  end
+
+  function this.SetItem(row, column, text)
+    local mbi = MultiboardGetItem(this.board, row, column)
+      MultiboardSetItemValue(this.board, text)
+      MultiboardReleaseItem(this.board)
+    mbi = nil
+  end
+
+  function this.SetStyle(i, place, width)
+  end
+
+  function this.Display(show)
+    MultiboardDisplay(this.board, show)
+  end
+
+
+
+
+  return this
+end
+
+-- End definition of multiboard
+
+function this.Init()
+  -- Nothing to do here?
+  print("MultiboardManager Init")
+end
+
+function this.GetBoard(title, nRows, nColumns)
+  -- local m = Multiboard.Create("MY_FIRST_MULTIBOARD", 4, 2)
+  local m = Multiboard.Create(title, nRows, nColumns)
+  return m
+end
 HumanUnitList = 
 {
   "hpea",

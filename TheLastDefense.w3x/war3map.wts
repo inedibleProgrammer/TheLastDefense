@@ -5,12 +5,12 @@ TheLastDefense
 
 STRING 2
 {
-Any
+4 Brave Souls
 }
 
 STRING 3
 {
-Nondescript
+Survive against an endless enemy horde using regular wc3 gameplay.
 }
 
 STRING 4
@@ -25,12 +25,12 @@ TheLastDefense
 
 STRING 6
 {
-LoadingScreenSubtitle
+The_Master_Lich
 }
 
 STRING 7
 {
-LoadingScreenText
+Survive against an endless horde using regular wc3 gameplay.
 }
 
 STRING 10

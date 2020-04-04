@@ -5,17 +5,16 @@ TheLastDefense = {}
 local this = TheLastDefense
 
 this.gameParameters = {}
-
-this.gameParameters.spawnPeriod = 5 -- Seconds
-this.gameParameters.burstPeriod = 15 -- Seconds
-this.gameParameters.upgradePeriod = 300 -- Seconds
+this.gameParameters.spawnPeriod = 10 -- Seconds
+this.gameParameters.burstPeriod = 30 -- Seconds
+this.gameParameters.upgradePeriod = 180 -- Seconds
 this.gameParameters.healthMultiplier = 100 -- HP, Are there units with less than this * level?
 this.gameParameters.level = 1 -- Scale monster spawning
 this.gameParameters.upgradesFinished = false
 this.gameParameters.unitSteroidEnabled = false -- Start adding HP to units
 this.gameParameters.unitSteroidCounter = 1 -- Add 100 * this counter HP to units
 
-
+this.multiboard = nil
 
 function this.Init()
   --[[ Initialize Timer: ]]
@@ -25,11 +24,26 @@ function this.Init()
 
   -- Assign abominations their targets
   this.InitializeAbominations()
+
+  -- Get a multiboard:
+  this.multiboard = MultiboardManager.GetBoard("MyFirstBoard", 1, 1) 
 end
 
 -- This should be turned into a state machine.
 function this.TheLastDefenseHandler()
   local currentElapsedSeconds = GameClock.GetElapsedSeconds()
+
+  -- Initialize the multiboard:
+  if( (ModuloInteger(currentElapsedSeconds, 5) == 0) and not(this.multiboard.initialized) ) then
+    print("Creating Board")
+    
+    this.multiboard.Initialize()
+    this.multiboard.Display(true)
+
+    this.multiboard.SetItem(0, 0, "Test")
+
+    
+  end
 
   if(ModuloInteger(currentElapsedSeconds, this.gameParameters.upgradePeriod) == 0) then
     this.gameParameters.level = this.gameParameters.level + 1
@@ -50,13 +64,13 @@ function this.TheLastDefenseHandler()
   end
 
   -- After a certain point, we should ramp up the difficulty:
-  if( (this.gameParameters.level == 4) and not(this.gameParameters.upgradesFinished) ) then
-    this.gameParameters.healthMultiplier = 600
+  if( (this.gameParameters.level == 5) and not(this.gameParameters.upgradesFinished) ) then
+    this.gameParameters.healthMultiplier = 200
     this.DoUpgrades()
-  end  
+  end
 
   -- Time to apply steroids?
-  if( this.gameParameters.level == 6 and not(this.gameParameters.unitSteroidEnabled) ) then
+  if( this.gameParameters.level == 7 and not(this.gameParameters.unitSteroidEnabled) ) then
     this.gameParameters.unitSteroidEnabled = true
   end
 
@@ -114,4 +128,7 @@ end
 
 function this.PrintGameParameters()
   print("P: " .. this.gameParameters.level .. ";" .. tostring(this.gameParameters.upgradesFinished) .. ";" .. tostring(this.gameParameters.unitSteroidEnabled) .. ";" .. this.gameParameters.unitSteroidCounter)
+end
+
+function this.InitializeMultiboard()
 end

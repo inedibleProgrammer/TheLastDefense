@@ -37,6 +37,10 @@ function Init()
   xpcall(DefenderManager.Init, print)
   --print("DefenderManagerInit end")
 
+  --print("MultiboardManagerInit start")
+  xpcall(MultiboardManager.Init, print)
+  --print("MultiboardManagerInit end")
+
   --print("TheLastDefenseInit start")
   xpcall(TheLastDefense.Init, print)
   --print("TheLastDefenseInit end")

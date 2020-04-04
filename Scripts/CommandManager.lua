@@ -40,6 +40,8 @@ function this.CommandHandler()
     this.Command_PrintDefenders()
   elseif(commandData.tokens[2] == "parameters") then
     this.Command_PrintGameParameters()
+  elseif(commandData.tokens[2] == "cam") then
+    this.Command_CameraAdjust(commandData)
   else
     -- Do nothing.
   end
@@ -78,4 +80,13 @@ end
 
 function this.Command_PrintGameParameters()
   TheLastDefense.PrintGameParameters()
+end
+
+function this.Command_CameraAdjust(commandData)
+  local distance = tonumber(commandData.tokens[3])
+  if( not(distance == nil) ) then
+    if( (distance >= 500) and (distance <= 3000) ) then
+      SetCameraFieldForPlayer(commandData.commandingPlayer, CAMERA_FIELD_TARGET_DISTANCE, distance, 1.00)
+    end
+  end
 end
