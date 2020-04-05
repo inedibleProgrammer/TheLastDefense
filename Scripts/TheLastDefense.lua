@@ -35,16 +35,23 @@ function this.Init()
   for k,v in ipairs(DefenderManager.DefenderList) do
     if( GetPlayerController(v.player) == MAP_CONTROL_COMPUTER ) then
       if( GetPlayerRace(v.player) == RACE_HUMAN ) then
-        PickMeleeAI(v.player, "human.ai", nil, nil)
+        StartMeleeAI(v.player, "human.ai")
       elseif( GetPlayerRace(v.player) == RACE_ORC ) then
-        PickMeleeAI(v.player, "orc.ai", nil, nil)
+        StartMeleeAI(v.player, "orc.ai")
       elseif( GetPlayerRace(v.player) == RACE_UNDEAD ) then
-        PickMeleeAI(v.player, "undead.ai", nil, nil)
+        StartMeleeAI(v.player, "undead.ai")
       elseif( GetPlayerRace(v.player) == RACE_NIGHTELF ) then
-        PickMeleeAI(v.player, "elf.ai", nil, nil)
+        StartMeleeAI(v.player, "elf.ai")
       end
       ShareEverythingWithTeamAI(v.player)
     end
+  end
+
+  --[[ Setup the trigger that handles when players leave the game: ]]
+  this.playerLeavingTrigger = CreateTrigger()
+  TriggerAddAction(this.playerLeavingTrigger, this.PlayerLeavingHandler)
+  for k,v in ipairs(DefenderManager.DefenderList) do
+    TriggerRegisterPlayerEvent(this.playerLeavingTrigger, v.player, EVENT_PLAYER_LEAVE)
   end
 
   -- Assign abominations their targets
@@ -146,6 +153,13 @@ function this.KillCountingHandler()
       v.killCount = v.killCount + 1
     end
   end
+end
+
+function this.PlayerLeavingHandler()
+  -- We want to split his resources up among his allies? TODO
+  local p = GetTriggerPlayer()
+
+  print(GetPlayerName(p) .. " has left the game.")
 end
 
 function this.InitializeAbominations()

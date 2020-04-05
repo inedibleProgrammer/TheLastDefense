@@ -34,6 +34,14 @@ function this.CommandHandler()
     this.Command_Visible(commandData)
   elseif(commandData.tokens[2] == "colors") then
     this.Command_ShowColors(commandData)
+  elseif(commandData.tokens[2] == "ally") then
+    this.Command_Ally(commandData)
+  elseif(commandData.tokens[2] == "unally") then
+    this.Command_Unally(commandData)
+  elseif(commandData.tokens[2] == "vision") then
+    this.Command_Vision(commandData)
+  elseif(commandData.tokens[2] == "unvision") then
+    this.Command_Unvision(commandData)
   elseif(commandData.tokens[2] == "abominations") then
     this.Command_PrintAbominations()
   elseif(commandData.tokens[2] == "defenders") then
@@ -70,6 +78,61 @@ function this.Command_ShowColors(commandData)
   ColorActions.ShowColors(commandData.commandingPlayer, page)
 end
 
+--[[ ALLIANCE COMMANDS ]]
+-- This function can be used for:
+  -- Ally
+  -- Unally
+  -- Vision
+  -- Unvision
+function this.PlayerAllianceFilter(commandData)
+  local doPlayersPass = false
+
+  local otherPlayerColor = commandData.tokens[3]
+  local otherPlayerNumber = ColorActions.ColorStringToNumber(otherPlayerColor)
+
+  if( not(otherPlayerNumber == nil) ) then
+    -- ColorActions.ColorStringToNumber returns based off of 1-indexing
+    otherPlayerNumber = otherPlayerNumber - 1
+
+    local otherPlayer = Player(otherPlayerNumber)
+
+    if( not(commandData.commandingPlayer == otherPlayer) ) then
+      commandData.otherPlayer = otherPlayer
+      doPlayersPass = true
+    end
+  end
+
+  return doPlayersPass
+end
+
+function this.Command_Ally(commandData)
+  if(this.PlayerAllianceFilter(commandData)) then
+    SetPlayerAlliance(commandData.commandingPlayer, commandData.otherPlayer, ALLIANCE_PASSIVE, true)
+  end
+end
+
+function this.Command_Unally(commandData)
+  if(this.PlayerAllianceFilter(commandData)) then
+    SetPlayerAlliance(commandData.commandingPlayer, commandData.otherPlayer, ALLIANCE_PASSIVE, false)
+  end
+end
+
+function this.Command_Vision(commandData)
+  if(this.PlayerAllianceFilter(commandData)) then
+    SetPlayerAlliance(commandData.commandingPlayer, commandData.otherPlayer, ALLIANCE_SHARED_VISION, true)
+  end
+end
+
+function this.Command_Unvision(commandData)
+  if(this.PlayerAllianceFilter(commandData)) then
+    SetPlayerAlliance(commandData.commandingPlayer, commandData.otherPlayer, ALLIANCE_SHARED_VISION, false)
+  end  
+end
+
+--[[ END ALLIANCE COMMANDS ]]
+
+
+--[[ GAME SPECIFIC COMMANDS ]]
 function this.Command_PrintAbominations()
   AbominationManager.PrintAbominationNames()
 end
@@ -81,6 +144,10 @@ end
 function this.Command_PrintGameParameters()
   TheLastDefense.PrintGameParameters()
 end
+
+
+--[[ END GAME SPECIFIC COMMANDS ]]
+
 
 function this.Command_CameraAdjust(commandData)
   local distance = tonumber(commandData.tokens[3])
