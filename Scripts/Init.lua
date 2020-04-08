@@ -3,7 +3,7 @@
 ]]
 
 function Init()
-  print("Init Start")
+  -- print("Init Start")
 
   --print("loading minimap")
   xpcall(BlzChangeMinimapTerrainTex("war3mapImported\\castle.blp"), print)
@@ -29,9 +29,9 @@ function Init()
   xpcall(ItemList_Init, print)
   --print("ItemList_Init end")
 
-  print("TestManager_Init start")
+  -- print("TestManager_Init start")
   xpcall(TestManager.Test_Init, print)
-  print("TestManager_Init end")
+  -- print("TestManager_Init end")
 
   --print("AbominationManagerInit start")
   xpcall(AbominationManager.Init, print)
@@ -49,5 +49,5 @@ function Init()
   xpcall(TheLastDefense.Init, print)
   --print("TheLastDefenseInit end")
 
-  print("Init End")
+  -- print("Init End")
 end

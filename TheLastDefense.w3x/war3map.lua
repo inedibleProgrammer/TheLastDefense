@@ -6,320 +6,11 @@ gg_trg_CallInit = nil
 gg_trg_HealUnit = nil
 gg_unit_nten_0015 = nil
 gg_trg_camera = nil
+gg_trg_AUnitDies = nil
+gg_trg_ItemTesting = nil
 function InitGlobals()
 end
 
-HumanUpgradeList =
-{
-  "Rhan",
-  "Rhpm",
-  "Rhrt",
-  "Rhra",
-  "Rhcd",
-  "Rhss",
-  "Rhde",
-  "Rhfc",
-  "Rhfl",
-  "Rhgb",
-  "Rhfs",
-  "Rhlh",
-  "Rhac",
-  "Rhme",
-  "Rhar",
-  "Rhri",
-  "Rhse",
-  "Rhpt",
-  "Rhst",
-  "Rhhb",
-  "Rhla",
-  "Rhsb",
-}
-
-OrcUpgradeList = 
-{
-  "Ropm",
-  "Robk",
-  "Robs",
-  "Robf",
-  "Roen",
-  "Rovs",
-  "Rolf",
-  "Ropg",
-  "Rows",
-  "Rorb",
-  "Rost",
-  "Rost",
-  "Rosp",
-  "Rowt",
-  "Roar",
-  "Rome",
-  "Rora",
-  "Rotr",
-  "Rwdm",
-  "Rowd",
-}
-
-UndeadUpgradeList = 
-{
-  "Rupm",
-  "Ruba",
-  "Rubu",
-  "Ruac",
-  "Rura",
-  "Rucr",
-  "Rusp",
-  "Rupc",
-  "Ruex",
-  "Rufb",
-  "Rugf",
-  "Rune",
-  "Rusl",
-  "Rusm",
-  "Rusf",
-  "Ruar",
-  "Rume",
-  "Ruwb",
-}
-
-NightElfUpgradeList =
-{
-  "Resi",
-  "Repm",
-  "Recb",
-  "Redc",
-  "Redt",
-  "Rehs",
-  "Reht",
-  "Reib",
-  "Reeb",
-  "Reec",
-  "Remk",
-  "Rema",
-  "Renb",
-  "Rerh",
-  "Rers",
-  "Resc",
-  "Resm",
-  "Resw",
-  "Reuv",
-  "Remg",
-  "Repb",
-  "Rews",
-}
-
-AllRacesUpgradeList = {}
-
-function UpgradeList_Init()
-   -- Merge the four races into one table:
-   Utility.TableMerge(AllRacesUpgradeList, HumanUpgradeList)
-   Utility.TableMerge(AllRacesUpgradeList, OrcUpgradeList)
-   Utility.TableMerge(AllRacesUpgradeList, UndeadUpgradeList)
-   Utility.TableMerge(AllRacesUpgradeList, NightElfUpgradeList)
-end
---[[ This module handles game specific logic ]]
-
-TheLastDefense = {}
-
-local this = TheLastDefense
-
-this.gameParameters = {}
-this.gameParameters.spawnPeriod = 10 -- Seconds
-this.gameParameters.burstPeriod = 30 -- Seconds
-this.gameParameters.upgradePeriod = 180 -- Seconds
-this.gameParameters.healthMultiplier = 100 -- HP, Are there units with less than this * level?
-this.gameParameters.level = 1 -- Scale monster spawning
-this.gameParameters.upgradesFinished = false
-this.gameParameters.unitSteroidEnabled = false -- Start adding HP to units
-this.gameParameters.unitSteroidCounter = 1 -- Add 100 * this counter HP to units
-
-this.multiboard = nil
-
-function this.Init()
-  --[[ Initialize Timer: ]]
-  this.clockTrigger = CreateTrigger()
-  TriggerAddAction(this.clockTrigger, this.TheLastDefenseHandler)
-  TriggerRegisterTimerEvent(this.clockTrigger, 1.00, true)
-
-  -- Assign abominations their targets
-  this.InitializeAbominations()
-
-  -- Get a multiboard:
-  this.multiboard = MultiboardManager.GetBoard("MyFirstBoard", 1, 1) 
-end
-
--- This should be turned into a state machine.
-function this.TheLastDefenseHandler()
-  local currentElapsedSeconds = GameClock.GetElapsedSeconds()
-
-  -- Initialize the multiboard:
-  if( (ModuloInteger(currentElapsedSeconds, 5) == 0) and not(this.multiboard.initialized) ) then
-    print("Creating Board")
-    
-    this.multiboard.Initialize()
-    this.multiboard.Display(true)
-
-    this.multiboard.SetItem(0, 0, "Test")
-
-    
-  end
-
-  if(ModuloInteger(currentElapsedSeconds, this.gameParameters.upgradePeriod) == 0) then
-    this.gameParameters.level = this.gameParameters.level + 1
-
-    if(this.gameParameters.unitSteroidEnabled) then
-      this.gameParameters.unitSteroidCounter = this.gameParameters.unitSteroidCounter + 1
-    end
-  end
-
-  if(ModuloInteger(currentElapsedSeconds, this.gameParameters.spawnPeriod) == 0) then
-    AbominationManager.AbominationSpawn(this.gameParameters)
-  end
-
-  if(ModuloInteger(currentElapsedSeconds, this.gameParameters.burstPeriod) == 0) then
-    AbominationManager.AbominationSpawn(this.gameParameters)
-    AbominationManager.AbominationSpawn(this.gameParameters)
-    AbominationManager.AbominationSpawn(this.gameParameters)
-  end
-
-  -- After a certain point, we should ramp up the difficulty:
-  if( (this.gameParameters.level == 5) and not(this.gameParameters.upgradesFinished) ) then
-    this.gameParameters.healthMultiplier = 200
-    this.DoUpgrades()
-  end
-
-  -- Time to apply steroids?
-  if( this.gameParameters.level == 7 and not(this.gameParameters.unitSteroidEnabled) ) then
-    this.gameParameters.unitSteroidEnabled = true
-  end
-
-
-  -- if a defender has lost all his units he is dead
-  this.DetermineLivingDefenders()
-
-  -- give the respective abomination of a dead defender a new living target defender
-  this.UpdateAbominationTargets()
-end
-
-
-function this.InitializeAbominations()
-  --[[ For every player in the game, there needs to be an abomination targeting that player ]]
-  for k,v in ipairs(DefenderManager.DefenderList) do
-    AbominationManager.AbominationList[k].active = true
-    AbominationManager.AbominationList[k].objectivePoint = v.startingPoint
-    AbominationManager.AbominationList[k].targetPlayer = v.player
-  end
-end
-
-function this.DoUpgrades()
-  this.gameParameters.upgradesFinished = true
-
-  for _,abom in ipairs(AbominationManager.AbominationList) do
-    for _,upg in ipairs(AllRacesUpgradeList) do
-      AddPlayerTechResearched(abom.player, FourCC(upg), 3)
-    end
-  end
-end
-
-
-function this.DetermineLivingDefenders()
-  for k,v in ipairs(DefenderManager.DefenderList) do
-    local unitsRemaining = GetPlayerUnitCount(v.player, true)
-    if( v.alive and (unitsRemaining <= 0) ) then
-      print("Player dead")
-      v.alive = false
-    end
-  end
-end
-
-function this.UpdateAbominationTargets()
-  for k,v in ipairs(AbominationManager.AbominationList) do
-    local unitsRemaining = GetPlayerUnitCount(v.targetPlayer, true) -- Abominations don't have a reference to their defender. Only the player.
-    if(unitsRemaining <= 0) then
-      local randomInt = GetRandomInt(1, #DefenderManager.DefenderList)
-      if(DefenderManager.DefenderList[randomInt].alive) then
-        print("new target")
-        v.targetPlayer = DefenderManager.DefenderList[randomInt].player
-      end
-    end
-  end
-end
-
-function this.PrintGameParameters()
-  print("P: " .. this.gameParameters.level .. ";" .. tostring(this.gameParameters.upgradesFinished) .. ";" .. tostring(this.gameParameters.unitSteroidEnabled) .. ";" .. this.gameParameters.unitSteroidCounter)
-end
-
-function this.InitializeMultiboard()
-end
-DefenderManager = {}
-
-local this = DefenderManager
-this.DefenderList = {}
-
---[[ Definition of a Defender: ]]
-local Defender = {}
-
-function Defender.Create(player, name, startingPoint)
-  local this = {}
-  this.player = player
-  this.name = name
-  this.startingPoint = startingPoint
-  this.alive = false
-
-  return this
-end
-
--- End Defender Definition
-
-function this.Init()
-  --[[ Get Defender starting locations: ]]
-    -- for each player (red, blue, teal, purple)
-    --   Find the Point for their main base and create a defender with that Point as their starting location
-    --   if that player does not exist,
-    --     Delete their goldmine
-
-  this.InitializeDefenders()
-end
-
-function this.InitializeDefenders()
-  -- This is the callback function to be called from ForGroup() (Reminder: this is just a definition)
-  -- ForGroup() will call this function for every unit. At the start of the game, this will be about 6 units per player. (starting units)
-  local function FindMainBase()
-    local u        = GetEnumUnit()
-    local unitID   = GetUnitTypeId(u)
-    local unitName = GetUnitName(u)
-
-    -- If the unitID matches any of the possible "town halls"
-    if (unitID == FourCC("htow") or
-        unitID == FourCC("ogre") or
-        unitID == FourCC("unpl") or
-        unitID == FourCC("etol")) 
-    then
-      local defenderStartingPoint = Utility.Point.Create(GetUnitX(u), GetUnitY(u))
-      local player = GetOwningPlayer(u)
-      local playerName = GetPlayerName(player)
-      local defender = Defender.Create(player, playerName, defenderStartingPoint)
-      defender.alive = true
-      table.insert(this.DefenderList, defender)
-    end
-  end
-
-  -- this.InitializeDefenders() starts here:
-  local g
-  for i=0,3 do -- For each possible human player
-    g = CreateGroup()
-    GroupEnumUnitsOfPlayer(g, Player(i), nil) -- What if the player isn't in the game? Will GroupEnumUnitsOfPlayer handle that?
-    ForGroup(g, FindMainBase)
-    DestroyGroup(g) -- Could recycle the group... how wasteful is this?
-  end
-  g = nil
-end
-
--- This function is useful for debugging.
-function this.PrintDefenderNames()
-  for k,v in ipairs(this.DefenderList) do 
-    print("Defender: " .. v.name .. ";" .. v.startingPoint.x .. ";" .. v.startingPoint.y .. ";" .. tostring(v.alive))
-  end
-end
 AbominationManager = {}
 
 local this = AbominationManager
@@ -344,25 +35,42 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
     local levelRestraint = true
     local attemptCounter = 10
 
-    if(gameParameters.level < 3) then -- Trying to help with lag
-      attemptCounter = 1
-    end
+    -- if(gameParameters.level < 3) then -- Trying to help with lag
+    --   attemptCounter = 0
+    -- end
 
     -- Select a random unit that is not a hero, and meets the level restraint:
     while( ((isHero == true) or (levelRestraint == true)) and (attemptCounter >= 0) ) do
       local r = GetRandomInt(1, #AllUnitList)
-      local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
 
-      -- Conditions for an undesirable unit:
-      isHero = IsHeroUnitId(GetUnitTypeId(u))
-      levelRestraint = (BlzGetUnitMaxHP(u) > (gameParameters.level * gameParameters.healthMultiplier))
+      isHero = IsHeroUnitId(FourCC(AllUnitList[r]))
+      levelRestraint = (GetFoodUsed(FourCC(AllUnitList[r])) > gameParameters.level)
 
-      -- If the unit is desirable, remove it.
-      if(levelRestraint or isHero) then
-        RemoveUnit(u)
+      if(isHero or levelRestraint) then
+        -- Do nothing
+      else
+        local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
+        this.ApplyUnitModifications(u, gameParameters)
       end
 
-      this.ApplyUnitModifications(u, gameParameters)
+      -- if( (IsHeroUnitId(FourCC(AllUnitList[r]))) or (GetFoodUsed(FourCC(AllUnitList[r])) > gameParameters.level) ) then
+      --   -- Do nothing
+      -- else
+      --   local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
+      --   this.ApplyUnitModifications(u, gameParameters)
+      -- end
+      -- local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
+
+      -- Conditions for an undesirable unit:
+      -- isHero = IsHeroUnitId(GetUnitTypeId(u))
+      -- levelRestraint = (BlzGetUnitMaxHP(u) > (gameParameters.level * gameParameters.healthMultiplier))
+
+      -- If the unit is desirable, remove it.
+      -- if(levelRestraint or isHero) then
+      --   RemoveUnit(u)
+      -- end
+
+      -- this.ApplyUnitModifications(u, gameParameters)
 
       attemptCounter = attemptCounter - 1
       u = nil
@@ -371,7 +79,7 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
     -- Make all the lazy monsters attack!
     local function IsIdle()
       local idleUnit = GetEnumUnit()
-      if(not(GetUnitCurrentOrder(idleUnit) == 851983)) then
+      if( not(GetUnitCurrentOrder(idleUnit) == 851983) and (idleUnit ~= gameParameters.finalBoss) ) then
         Utility.AttackRandomUnitOfPlayer(idleUnit, this.targetPlayer)
       end
       idleUnit = nil
@@ -778,14 +486,26 @@ function this.CommandHandler()
     this.Command_Visible(commandData)
   elseif(commandData.tokens[2] == "colors") then
     this.Command_ShowColors(commandData)
+  elseif(commandData.tokens[2] == "ally") then
+    this.Command_Ally(commandData)
+  elseif(commandData.tokens[2] == "unally") then
+    this.Command_Unally(commandData)
+  elseif(commandData.tokens[2] == "vision") then
+    this.Command_Vision(commandData)
+  elseif(commandData.tokens[2] == "unvision") then
+    this.Command_Unvision(commandData)
+  elseif(commandData.tokens[2] == "cam") then
+    this.Command_CameraAdjust(commandData)
+  elseif(commandData.tokens[2] == "shop") then
+    TheLastDefense.ViewShopItems(commandData)
+  elseif(commandData.tokens[2] == "buy") then
+    TheLastDefense.BuyShopItem(commandData)
   elseif(commandData.tokens[2] == "abominations") then
     this.Command_PrintAbominations()
   elseif(commandData.tokens[2] == "defenders") then
     this.Command_PrintDefenders()
   elseif(commandData.tokens[2] == "parameters") then
     this.Command_PrintGameParameters()
-  elseif(commandData.tokens[2] == "cam") then
-    this.Command_CameraAdjust(commandData)
   else
     -- Do nothing.
   end
@@ -814,6 +534,71 @@ function this.Command_ShowColors(commandData)
   ColorActions.ShowColors(commandData.commandingPlayer, page)
 end
 
+--[[ ALLIANCE COMMANDS ]]
+-- This function can be used for:
+  -- Ally
+  -- Unally
+  -- Vision
+  -- Unvision
+function this.PlayerAllianceFilter(commandData)
+  local doPlayersPass = false
+
+  local otherPlayerColor = commandData.tokens[3]
+  local otherPlayerNumber = ColorActions.ColorStringToNumber(otherPlayerColor)
+
+  if( not(otherPlayerNumber == nil) ) then
+    -- ColorActions.ColorStringToNumber returns based off of 1-indexing
+    otherPlayerNumber = otherPlayerNumber - 1
+
+    local otherPlayer = Player(otherPlayerNumber)
+
+    if( not(commandData.commandingPlayer == otherPlayer) ) then
+      commandData.otherPlayer = otherPlayer
+      doPlayersPass = true
+    end
+  end
+
+  return doPlayersPass
+end
+
+function this.Command_Ally(commandData)
+  if(this.PlayerAllianceFilter(commandData)) then
+    SetPlayerAlliance(commandData.commandingPlayer, commandData.otherPlayer, ALLIANCE_PASSIVE, true)
+  end
+end
+
+function this.Command_Unally(commandData)
+  if(this.PlayerAllianceFilter(commandData)) then
+    SetPlayerAlliance(commandData.commandingPlayer, commandData.otherPlayer, ALLIANCE_PASSIVE, false)
+  end
+end
+
+function this.Command_Vision(commandData)
+  if(this.PlayerAllianceFilter(commandData)) then
+    SetPlayerAlliance(commandData.commandingPlayer, commandData.otherPlayer, ALLIANCE_SHARED_VISION, true)
+  end
+end
+
+function this.Command_Unvision(commandData)
+  if(this.PlayerAllianceFilter(commandData)) then
+    SetPlayerAlliance(commandData.commandingPlayer, commandData.otherPlayer, ALLIANCE_SHARED_VISION, false)
+  end  
+end
+
+--[[ END ALLIANCE COMMANDS ]]
+
+function this.Command_CameraAdjust(commandData)
+  local distance = tonumber(commandData.tokens[3])
+  if( not(distance == nil) ) then
+    if( (distance >= 500) and (distance <= 3000) ) then
+      SetCameraFieldForPlayer(commandData.commandingPlayer, CAMERA_FIELD_TARGET_DISTANCE, distance, 1.00)
+    end
+  end
+end
+
+
+--[[ GAME SPECIFIC COMMANDS ]]
+-- I need to make it so commands can be added externally.
 function this.Command_PrintAbominations()
   AbominationManager.PrintAbominationNames()
 end
@@ -826,12 +611,82 @@ function this.Command_PrintGameParameters()
   TheLastDefense.PrintGameParameters()
 end
 
-function this.Command_CameraAdjust(commandData)
-  local distance = tonumber(commandData.tokens[3])
-  if( not(distance == nil) ) then
-    if( (distance >= 500) and (distance <= 3000) ) then
-      SetCameraFieldForPlayer(commandData.commandingPlayer, CAMERA_FIELD_TARGET_DISTANCE, distance, 1.00)
+
+--[[ END GAME SPECIFIC COMMANDS ]]
+
+
+
+DefenderManager = {}
+
+local this = DefenderManager
+this.DefenderList = {}
+this.defenderCount = 0
+
+--[[ Definition of a Defender: ]]
+local Defender = {}
+
+function Defender.Create(player, name, startingPoint)
+  local this = {}
+  this.player = player
+  this.name = name
+  this.startingPoint = startingPoint
+  this.alive = false
+  this.killCount = 0
+
+  return this
+end
+
+-- End Defender Definition
+
+function this.Init()
+    --[[ Get Defender starting locations: ]]
+    -- for each player (red, blue, teal, purple)
+    --   Find the Point for their main base and create a defender with that Point as their starting location
+    --   if that player does not exist,
+    --     Delete their goldmine
+
+    this.InitializeDefenders()
+end
+
+function this.InitializeDefenders()
+  -- This is the callback function to be called from ForGroup() (Reminder: this is just a definition)
+  -- ForGroup() will call this function for every unit. At the start of the game, this will be about 6 units per player. (starting units)
+  local function FindMainBase()
+    local u        = GetEnumUnit()
+    local unitID   = GetUnitTypeId(u)
+    local unitName = GetUnitName(u)
+
+    -- If the unitID matches any of the possible "town halls"
+    if (unitID == FourCC("htow") or
+        unitID == FourCC("ogre") or
+        unitID == FourCC("unpl") or
+        unitID == FourCC("etol")) 
+    then
+      local defenderStartingPoint = Utility.Point.Create(GetUnitX(u), GetUnitY(u))
+      local player = GetOwningPlayer(u)
+      local playerName = GetPlayerName(player)
+      local defender = Defender.Create(player, playerName, defenderStartingPoint)
+      defender.alive = true
+      this.defenderCount = this.defenderCount + 1
+      table.insert(this.DefenderList, defender)
     end
+  end
+
+  -- this.InitializeDefenders() starts here:
+  local g
+  for i=0,3 do -- For each possible human player
+    g = CreateGroup()
+    GroupEnumUnitsOfPlayer(g, Player(i), nil) -- What if the player isn't in the game? Will GroupEnumUnitsOfPlayer handle that?
+    ForGroup(g, FindMainBase)
+    DestroyGroup(g) -- Could recycle the group... how wasteful is this?
+  end
+  g = nil
+end
+
+-- This function is useful for debugging.
+function this.PrintDefenderNames()
+  for k,v in ipairs(this.DefenderList) do 
+    print("Defender: " .. v.name .. ";" .. v.startingPoint.x .. ";" .. v.startingPoint.y .. ";" .. tostring(v.alive))
   end
 end
 GameClock = {}
@@ -881,7 +736,7 @@ end
 ]]
 
 function Init()
-  print("Init Start")
+  -- print("Init Start")
 
   --print("loading minimap")
   xpcall(BlzChangeMinimapTerrainTex("war3mapImported\\castle.blp"), print)
@@ -903,9 +758,13 @@ function Init()
   xpcall(UpgradeList_Init, print)
   --print("UpgradeList_Init end")
 
-  -- print("TestManager TestHumanUnits start")
-  -- xpcall(TestManager.Test_HumanUnits, print)
-  -- print("TestManager TestHumanUnits end")
+  --print("ItemList_Init start")
+  xpcall(ItemList_Init, print)
+  --print("ItemList_Init end")
+
+  -- print("TestManager_Init start")
+  xpcall(TestManager.Test_Init, print)
+  -- print("TestManager_Init end")
 
   --print("AbominationManagerInit start")
   xpcall(AbominationManager.Init, print)
@@ -923,101 +782,329 @@ function Init()
   xpcall(TheLastDefense.Init, print)
   --print("TheLastDefenseInit end")
 
-  print("Init End")
+  -- print("Init End")
 end
 
-Utility = {}
+PermanentItemList = 
+{
+  "afac",
+  "spsh",
+  "ajen",
+  "bgst",
+  "belv",
+  "bspd",
+  "cnob",
+  "ratc",
+  "rat6",
+  "rat9",
+  "clfm",
+  "clsd",
+  "crys",
+  "dsum",
+  "rst1",
+  "gcel",
+  "hval",
+  "hcun",
+  "rhth",
+  "kpin",
+  "lgdh",
+  "rin1",
+  "mcou",
+  "odef",
+  "penr",
+  "pmna",
+  "prvt",
+  "rde2",
+  "rde3",
+  "rde4",
+  "rlif",
+  "ciri",
+  "brac",
+  "sbch",
+  "rag1",
+  "rwiz",
+  "ssil",
+  "stel",
+  "evtl",
+  "lhst",
+  "war2",
+}
+
+ChargedItemList =
+{
+  "wild",
+  "ankh",
+  "fgsk",
+  "fgdg",
+  "whwd",
+  "hlst",
+  "shar",
+  "infs",
+  "mnst",
+  "pdi2",
+  "pdiv",
+  "pghe",
+  "pgma",
+  "pnvu",
+  "pomn",
+  "pres",
+  "fgrd",
+  "rej3",
+  "sand",
+  "sres",
+  "srrc",
+  "sror",
+  "wswd",
+  "fgfh",
+  "fgrg",
+  "totw",
+  "will",
+  "wlsd",
+  "woms",
+  "wshs",
+  "wcyc",
+}
+
+PowerUpItemList =
+{
+  "lmbr",
+  "gfor",
+  "gomn",
+  "guvi",
+  "gold",
+  "manh",
+  "rdis",
+  "rhe3",
+  "rma2",
+  "rre2",
+  "rhe2",
+  "rhe1",
+  "rre1",
+  "rman",
+  "rreb",
+  "rres",
+  "rsps",
+  "rspd",
+  "rspl",
+  "rwat",
+  "tdex",
+  "rdx2",
+  "texp",
+  "tint",
+  "tin2",
+  "tpow",
+  "tstr",
+  "tst2",
+}
+
+ArtifactItemList =
+{
+  "ratf",
+  "ckng",
+  "desc",
+  "modt",
+  "ofro",
+  "tkno",
+}
+
+PurchasableItemList = 
+{
+  "pclr",
+  "hslv",
+  "tsct",
+  "plcl",
+  "mcri",
+  "moon",
+  "phea",
+  "pinv",
+  "pnvl",
+  "pman",
+  "ritd",
+  "rnec",
+  "skul",
+  "shea",
+  "sman",
+  "spro",
+  "sreg",
+  "shas",
+  "stwp",
+  "silk",
+  "sneg",
+  "ssan",
+  "tcas",
+  "tgrh",
+  "tret",
+  "vamp",
+  "wneg",
+  "wneu",
+}
+
+CampaignItemList =
+{
+  "kybl",
+  "ches",
+  "bzbe",
+  "engs",
+  "bzbf",
+  "gmfr",
+  "ledg",
+  "kygh",
+  "gopr",
+  "azhr",
+  "cnhn",
+  "dkfw",
+  "k3m3",
+  "mgtk",
+  "mort",
+  "kymn",
+  "k3m1",
+  "jpnt",
+  "k3m2",
+  "phlt",
+  "sclp",
+  "sxpl",
+  "sorf",
+  "shwd",
+  "skrt",
+  "glsk",
+  "kysn",
+  "sehr",
+  "thle",
+  "dphe",
+  "dthb",
+  "ktrm",
+  "vpur",
+  "wtlg",
+  "wolg",
+}
+
+MiscellaneousItemList =
+{
+  "amrc",
+  "axas",
+  "anfg",
+  "pams",
+  "arsc",
+  "arsh",
+  "asbl",
+  "btst",
+  "blba",
+  "bfhr",
+  "brag",
+  "cosl",
+  "rat3",
+  "stpg",
+  "crdt",
+  "dtsb",
+  "drph",
+  "dust",
+  "shen",
+  "envl",
+  "esaz",
+  "frhg",
+  "fgun",
+  "fwss",
+  "frgd",
+  "gemt",
+  "gvsm",
+  "gobm",
+  "tels",
+  "rej4",
+  "rej6",
+  "grsl",
+  "hbth",
+  "sfog",
+  "flag",
+  "iwbr",
+  "jdrn",
+  "kgal",
+  "klmm",
+  "rej2",
+  "rej5",
+  "lnrn",
+  "mlst",
+  "mnsf",
+  "rej1",
+  "lure",
+  "nspi",
+  "nflg",
+  "ocor",
+  "ofr2",
+  "ofir",
+  "gldo",
+  "oli2",
+  "olig",
+  "oslo",
+  "oven",
+  "oflg",
+  "pgin",
+  "pspd",
+  "rde0",
+  "rde1",
+  "rnsp",
+  "ram2",
+  "ram4",
+  "ram3",
+  "ram1",
+  "rugt",
+  "rump",
+  "horl",
+  "schl",
+  "ccmd",
+  "rots",
+  "scul",
+  "srbd",
+  "srtl",
+  "sor1",
+  "sora",
+  "sor2",
+  "sor3",
+  "sor4",
+  "sor5",
+  "sor6",
+  "sor7",
+  "sor8",
+  "sor9",
+  "shcw",
+  "shtm",
+  "shhn",
+  "shdt",
+  "shrs",
+  "sksh",
+  "soul",
+  "gsou",
+  "sbok",
+  "sprn",
+  "spre",
+  "stre",
+  "stwa",
+  "thdm",
+  "tbak",
+  "tbar",
+  "tbsm",
+  "tfar",
+  "tlum",
+  "tgxp",
+  "tmsc",
+  "tmmt",
+  "uflg",
+  "vddl",
+  "ward",
+}
+
+AllItemList = {}
 
 
---[[ Definition of Point ]]
-Utility.Point = {}
-
-function Utility.Point.Create(x, y)
-  local this = {}
-  this.x = x
-  this.y = y
-
-  function this.IsInRange(xMin, xMax, yMin, yMax)
-    local isInRange = true
-    if( not((xMin <= this.x) and (this.x <= xMax)) ) then
-      isInRange = false
-    end
-    if( not((yMin <= this.y) and (this.y <= yMax)) ) then
-      isInRange = false
-    end
-    return isInRange
-  end
-
-  return this
+function ItemList_Init()
+  -- Merge every table into one table:
+  Utility.TableMerge(AllItemList, PermanentItemList)
+  Utility.TableMerge(AllItemList, ChargedItemList)
+  Utility.TableMerge(AllItemList, PowerUpItemList)
+  Utility.TableMerge(AllItemList, ArtifactItemList)
+  Utility.TableMerge(AllItemList, PurchasableItemList)
+  Utility.TableMerge(AllItemList, CampaignItemList)
+  Utility.TableMerge(AllItemList, MiscellaneousItemList)
 end
-
--- End Definition of Point
-
-
-function Utility.TriggerRegisterAllPlayersChat(which_trigger, message)
-  local all_players = (bj_MAX_PLAYER_SLOTS + 1 )
-  for i = 0, all_players do
-    TriggerRegisterPlayerChatEvent(which_trigger, Player(i), message, false)
-  end
-end
-
-function Utility.MySplit(input_str, sep)
-  if sep == nil then
-    sep = " "
-  end
-  local t={}
-  for str in string.gmatch(input_str, "([^"..sep.."]+)") do
-    table.insert(t, str)
-  end
-  return t
-end
-
-function Utility.TableMerge(t1, t2)
-  for k,v in ipairs(t2) do
-      table.insert(t1, v)
-  end
-end
-
-
--- Unit Group Functions:
-function Utility.RemoveDeadUnitsFromGroup(unitGroup)
-  local function RemoveDeadUnits()
-    local u = GetEnumUnit()
-    if(IsUnitType(u, UNIT_TYPE_DEAD)) then
-      GroupRemoveUnit(unitGroup, u)
-    end
-    u = nil
-  end
-
-  ForGroup(unitGroup, RemoveDeadUnits)
-end
-
-function Utility.AttackRandomUnitOfPlayer(commandedUnit, targetPlayer)
-  local g = CreateGroup()
-  GroupEnumUnitsOfPlayer(g, targetPlayer, nil)
-  
-  local u = GroupPickRandomUnit(g)
-  IssueTargetOrder(commandedUnit, "attack", u)
-  
-  DestroyGroup(g)
-  g = nil
-  u = nil
-end
-
--- End Unit Group Functions
-TestManager = {}
-
-local this = TestManager
-
-
-
-function this.Test_HumanUnits()
-  for k,v in ipairs(AllRacesUnitList) do
-    CreateNUnitsAtLoc(1, FourCC(v), Player(0), GetRectCenter(GetPlayableMapRect()), bj_UNIT_FACING)
-  end
-end
-
--- CreateNUnitsAtLoc(1, FourCC(unit), Player(0), GetRectCenter(GetPlayableMapRect()), bj_UNIT_FACING)
 MultiboardManager = {}
 
 local this = MultiboardManager
@@ -1039,8 +1126,8 @@ function Multiboard.Create(title, nRows, nColumns)
     this.initialized = true
     this.board = CreateMultiboard()
 
-    MultiboardSetColumnCount(this.board, this.nRows)
     MultiboardSetRowCount(this.board, this.nColumns)
+    MultiboardSetColumnCount(this.board, this.nRows)
     MultiboardSetTitleText(this.board, this.title)
   end
 
@@ -1055,11 +1142,20 @@ function Multiboard.Create(title, nRows, nColumns)
     mbi = nil
   end
 
-  function this.SetStyle(i, place, width)
+  function this.SetStyle(row, column, width)
+    local mbi = MultiboardGetItem(this.board, row, column)
+      MultiboardSetItemStyle(mbi, true, false)
+      MultiboardSetItemWidth(mbi, width)
+      MultiboardReleaseItem(mbi)
+    mbi = nil
   end
 
   function this.Display(show)
     MultiboardDisplay(this.board, show)
+  end
+
+  function this.Minimize(show)
+    MultiboardMinimize(this.board, show)
   end
 
 
@@ -1079,6 +1175,401 @@ function this.GetBoard(title, nRows, nColumns)
   -- local m = Multiboard.Create("MY_FIRST_MULTIBOARD", 4, 2)
   local m = Multiboard.Create(title, nRows, nColumns)
   return m
+end
+TestManager = {}
+
+local this = TestManager
+
+
+function this.Test_Init()
+  -- Tests you want to run immediately:
+  -- this.PrintRuler()
+  
+  -- this.Test_ItemDescription()
+  this.Test_ItemThings()
+end
+
+function this.PrintRuler()
+  DisplayTimedTextToPlayer(Player(0), 0.0, 0.5, 500, "01234567890123456789012345678901234567890123456789012345678")
+end
+
+
+function this.Test_HumanUnits()
+  for k,v in ipairs(AllRacesUnitList) do
+    CreateNUnitsAtLoc(1, FourCC(v), Player(0), GetRectCenter(GetPlayableMapRect()), bj_UNIT_FACING)
+  end
+end
+
+function this.Test_ItemDescription()
+  local i = CreateItem(FourCC("afac"), 0.0, 0.0)
+  print(BlzGetItemDescription(i))
+  RemoveItem(i)
+  i = nil
+end
+
+function this.Test_ItemThings()
+  print(TheLastDefense.GetItemPrice("arsh"))
+end
+--[[ This module handles game specific logic ]]
+
+TheLastDefense = {}
+
+local this = TheLastDefense
+
+this.gameParameters = {}
+this.gameParameters.spawnPeriod = 10 -- Seconds
+this.gameParameters.burstPeriod = 30 -- Seconds
+this.gameParameters.upgradePeriod = 180 -- Seconds
+this.gameParameters.healthMultiplier = 100 -- HP, Are there units with less than this * level?
+this.gameParameters.level = 0 -- Scale monster spawning
+this.gameParameters.upgradesFinished = false
+this.gameParameters.unitSteroidEnabled = false -- Start adding HP to units
+this.gameParameters.unitSteroidCounter = 1 -- Add 100 * this counter HP to units
+this.gameParameters.shopUpdatePeriod = 30 -- Seconds
+
+this.multiboard = nil
+this.multiboard_initialized = false
+this.multiboard_rows = 0
+
+this.finalBoss = {}
+
+this.shopItemList = {}
+this.shopItemList.itemCount = 4 -- This should probably never change from 4, since you can only fit 4 items on a screen
+--[[ Definition of a shop item: ]]
+this.shopItem = {}
+
+function this.shopItem.Create(ID, price)
+  local this = {}
+  this.ID = ID
+  this.price = price
+
+  return this
+end
+-- End definition of a shop item
+
+function this.Init()
+  --[[ Initialize Timer: ]]
+  this.clockTrigger = CreateTrigger()
+  TriggerAddAction(this.clockTrigger, this.TheLastDefenseHandler)
+  TriggerRegisterTimerEvent(this.clockTrigger, 1.00, true)
+
+  --[[ Initialize Trigger that counts kills: ]]
+  this.killCountingTrigger = CreateTrigger()
+  TriggerAddAction(this.killCountingTrigger, this.KillCountingHandler)
+  for k,v in ipairs(AbominationManager.AbominationList) do
+    TriggerRegisterPlayerUnitEvent(this.killCountingTrigger, v.player, EVENT_PLAYER_UNIT_DEATH, nil)
+  end
+
+    --[[ Setup the trigger that handles when players leave the game: ]]
+    this.playerLeavingTrigger = CreateTrigger()
+    TriggerAddAction(this.playerLeavingTrigger, this.PlayerLeavingHandler)
+    for k,v in ipairs(DefenderManager.DefenderList) do
+      TriggerRegisterPlayerEvent(this.playerLeavingTrigger, v.player, EVENT_PLAYER_LEAVE)
+    end
+
+  --[[ Load AI for the defenders that are AI controlled: ]]
+  for k,v in ipairs(DefenderManager.DefenderList) do
+    if( GetPlayerController(v.player) == MAP_CONTROL_COMPUTER ) then
+      if( GetPlayerRace(v.player) == RACE_HUMAN ) then
+        StartMeleeAI(v.player, "human.ai")
+      elseif( GetPlayerRace(v.player) == RACE_ORC ) then
+        StartMeleeAI(v.player, "orc.ai")
+      elseif( GetPlayerRace(v.player) == RACE_UNDEAD ) then
+        StartMeleeAI(v.player, "undead.ai")
+      elseif( GetPlayerRace(v.player) == RACE_NIGHTELF ) then
+        StartMeleeAI(v.player, "elf.ai")
+      end
+      ShareEverythingWithTeamAI(v.player)
+    end
+  end
+
+  this.InitializeFinalBoss()
+
+  -- Assign abominations their targets
+  this.InitializeAbominations()
+
+  -- Get a multiboard:
+  -- this.multiboard = MultiboardManager.GetBoard("MyFirstBoard", 1, 1) 
+end
+
+-- This should be turned into a state machine.
+function this.TheLastDefenseHandler()
+  local currentElapsedSeconds = GameClock.GetElapsedSeconds()
+
+  -- Initialize the multiboard:
+  if( (ModuloInteger(currentElapsedSeconds, 5) == 0) and not(this.multiboard_initialized) ) then
+    print("Creating Board")
+    this.multiboard_initialized = true
+    
+    this.multiboard = CreateMultiboardBJ(2, DefenderManager.defenderCount + 1, "ScoreBoard")
+    MultiboardMinimizeBJ(true, this.multiboard)
+    MultiboardSetItemStyleBJ(this.multiboard, 0, 0, true, false)
+    MultiboardSetItemWidthBJ(this.multiboard, 0, 0, 10)
+
+    for k,v in ipairs(DefenderManager.DefenderList) do
+      MultiboardSetItemValueBJ(this.multiboard, 1, k, "|c" .. ColorList[ColorActions.NumberToColorString(GetPlayerId(v.player) + 1)].hex_code ..GetPlayerName(v.player) .. "|r")
+      this.multiboard_rows = this.multiboard_rows + 1
+    end
+
+    MultiboardSetItemValueBJ(this.multiboard, 1, this.multiboard_rows + 1, "|c" .. ColorList.gold.hex_code .. "GameTime:" .. "|r")
+
+    -- MultiboardSetItemValueBJ(this.multiboard, 1, 1, "Test")
+    -- MultiboardSetItemValueBJ(this.multiboard, 2, 1, "|c" .. ColorList.light_blue.hex_code .. "Test2" .. "|r")
+    -- this.multiboard.Initialize()
+    -- this.multiboard.Display(true)
+    -- this.multiboard.Minimize(true)
+    
+    -- this.multiboard.SetStyle(0, 0, 0.14)
+    -- this.multiboard.SetItem(0, 0, "|c" .. ColorList.light_blue.hex_code .. "Test" .. "|r")
+
+    -- MultiboardSetItemStyleBJ(this.multiboard.board, 1, 1, true, false)
+    -- MultiboardSetItemWidthBJ(this.multiboard.board, )
+    
+  end
+
+  -- Update ScoreBoard:
+
+  if(this.multiboard_initialized) then
+    for k,v in ipairs(DefenderManager.DefenderList) do
+      MultiboardSetItemValueBJ(this.multiboard, 2, k, tostring(v.killCount))
+    end
+    MultiboardSetItemValueBJ(this.multiboard, 2, this.multiboard_rows + 1, tostring(GameClock.hours) .. ":" .. tostring(GameClock.minutes) .. ":" .. tostring(GameClock.seconds))
+  end
+
+  if(ModuloInteger(currentElapsedSeconds, this.gameParameters.upgradePeriod) == 0) then
+    this.gameParameters.level = this.gameParameters.level + 1
+
+    if(this.gameParameters.unitSteroidEnabled) then
+      this.gameParameters.unitSteroidCounter = this.gameParameters.unitSteroidCounter + 1
+    end
+  end
+
+  if(ModuloInteger(currentElapsedSeconds, this.gameParameters.spawnPeriod) == 0) then
+    AbominationManager.AbominationSpawn(this.gameParameters)
+  end
+
+  if(ModuloInteger(currentElapsedSeconds, this.gameParameters.shopUpdatePeriod) == 0) then
+    print("Shop Items Updated")
+    this.UpdateShopItems()
+  end
+
+  if(ModuloInteger(currentElapsedSeconds, this.gameParameters.burstPeriod) == 0) then
+    AbominationManager.AbominationSpawn(this.gameParameters)
+    AbominationManager.AbominationSpawn(this.gameParameters)
+    AbominationManager.AbominationSpawn(this.gameParameters)
+  end
+
+  -- After a certain point, we should ramp up the difficulty:
+  if( (this.gameParameters.level == 5) and not(this.gameParameters.upgradesFinished) ) then
+    this.gameParameters.healthMultiplier = 200
+    this.DoUpgrades()
+  end
+
+  -- Time to apply steroids?
+  if( this.gameParameters.level == 7 and not(this.gameParameters.unitSteroidEnabled) ) then
+    this.gameParameters.unitSteroidEnabled = true
+  end
+
+
+  -- if a defender has lost all his units he is dead
+  this.DetermineLivingDefenders()
+
+  -- give the respective abomination of a dead defender a new living target defender
+  this.UpdateAbominationTargets()
+end
+
+function this.KillCountingHandler()
+  local p = GetOwningPlayer(GetKillingUnit())
+
+  for k,v in ipairs(DefenderManager.DefenderList) do
+    if(v.player == p) then
+      v.killCount = v.killCount + 1
+    end
+  end
+end
+
+function this.PlayerLeavingHandler()
+  -- We want to split his resources up among his allies? TODO
+  local p = GetTriggerPlayer()
+
+  print(GetPlayerName(p) .. " has left the game.")
+end
+
+function this.InitializeFinalBoss()
+  this.finalBoss.point = Utility.Point.Create(-4592.5, 5275.7)
+  this.finalBoss.u = CreateUnit(Player(10), FourCC("nbal"), this.finalBoss.point.x, this.finalBoss.point.y, 270.0)
+
+  --[[ Add some legit modifications ]]
+  -- Name:
+  BlzSetUnitName(this.finalBoss.u, "Wormwood")
+
+  -- Health:
+  BlzSetUnitMaxHP(this.finalBoss.u, 100000)
+  SetUnitLifePercentBJ(this.finalBoss.u, 100.0)
+
+  -- HP Regen
+  BlzSetUnitRealField(this.finalBoss.u, UNIT_RF_HIT_POINTS_REGENERATION_RATE, 100)
+
+  -- Damage
+  BlzSetUnitBaseDamage(this.finalBoss.u, 500, 0) -- Ground
+  BlzSetUnitBaseDamage(this.finalBoss.u, 500, 1) -- Air
+
+  -- Armor
+  BlzSetUnitArmor(this.finalBoss.u, 150)
+
+  -- Size, color, tint
+  SetUnitScale(this.finalBoss.u, 2.0, 0.0, 0.0)
+  SetUnitColor(this.finalBoss.u, PLAYER_COLOR_COAL)
+  SetUnitVertexColor(this.finalBoss.u, 100, 100, 100, 255)
+
+  -- Make sure he doesn't get triggered to move..
+  this.gameParameters.finalBoss = this.finalBoss.u
+end
+
+function this.InitializeAbominations()
+  --[[ For every player in the game, there needs to be an abomination targeting that player ]]
+  for k,v in ipairs(DefenderManager.DefenderList) do
+    AbominationManager.AbominationList[k].active = true
+    AbominationManager.AbominationList[k].objectivePoint = v.startingPoint
+    AbominationManager.AbominationList[k].targetPlayer = v.player
+  end
+end
+
+function this.DoUpgrades()
+  this.gameParameters.upgradesFinished = true
+
+  for _,abom in ipairs(AbominationManager.AbominationList) do
+    for _,upg in ipairs(AllRacesUpgradeList) do
+      AddPlayerTechResearched(abom.player, FourCC(upg), 3)
+    end
+  end
+end
+
+-- relevantItem should be the 4 character string.
+function this.GetItemPrice(relevantItem)
+  local point = Utility.Point.Create(6687.8, 6359.3)
+  local shop = CreateUnit(Player(10), FourCC("ngme"), point.x, point.y, 0.0)
+  local hero = CreateUnit(Player(10), FourCC("Hpal"), point.x, point.y, 0.0)
+  local i = UnitAddItemById(hero, FourCC(relevantItem), 0)
+  local initialGold = GetPlayerState(Player(10),PLAYER_STATE_RESOURCE_GOLD)
+  local finalGold = 0
+  UnitDropItemTarget(hero, i, shop)
+  TriggerSleepAction(0.1)
+  finalGold = (GetPlayerState(Player(10),PLAYER_STATE_RESOURCE_GOLD) - initialGold) * 2
+  RemoveUnit(shop)
+  RemoveUnit(hero)
+  RemoveItem(i)
+  shop = nil
+  hero = nil
+  i = nil
+  return finalGold
+end
+
+function this.UpdateShopItems()
+  -- First, clear the items in the shop list
+  for k,v in ipairs(this.shopItemList) do
+    -- this.shopItemList[k] = nil
+    table.remove(this.shopItemList)
+  end
+
+  -- Now fill the list with random item codes
+  for i = 1, this.shopItemList.itemCount do
+    local shopItem = {}
+    repeat 
+      local r = GetRandomInt(1, #AllItemList)
+      local ID = AllItemList[r]
+      shopItem = this.shopItem.Create(ID, this.GetItemPrice(ID)) -- Maybe I should just get every item price at the beginning of the game and record it.
+    until (shopItem.price ~= 0)
+    table.insert(this.shopItemList, shopItem)
+  end
+end
+
+function this.BuyShopItem(commandData)
+  local itemToBuyString = commandData.tokens[3]
+  local nItemToBuy = 0
+
+  if (itemToBuyString == "1") then nItemToBuy = 1
+  elseif (itemToBuyString == "2") then nItemToBuy = 2
+  elseif (itemToBuyString == "3") then nItemToBuy = 3
+  elseif (itemToBuyString == "4") then nItemToBuy = 4
+  else -- do nothing
+  end
+  print("here1: " .. itemToBuyString .. nItemToBuy)
+
+  -- Don't bother to do anything unless the item to buy makes sense
+  if( (1 <= nItemToBuy) and (nItemToBuy <= 4) ) then
+    print("here2")
+    local dropPoint = {}
+    local playerCurrentGold = GetPlayerState(commandData.commandingPlayer, PLAYER_STATE_RESOURCE_GOLD)
+    local itemPrice = this.shopItemList[nItemToBuy].price
+    print("here3")
+    -- Don't bother to do anything unless the player has enough gold
+    if(playerCurrentGold >= itemPrice) then
+      print("here4")
+      SetPlayerState(commandData.commandingPlayer, PLAYER_STATE_RESOURCE_GOLD, playerCurrentGold - itemPrice)
+
+      -- Determine the dropping point
+      for k,v in ipairs(DefenderManager.DefenderList) do
+        if(v.player == commandData.commandingPlayer) then
+          dropPoint = v.startingPoint
+        end
+      end
+
+      CreateItem(FourCC(this.shopItemList[nItemToBuy].ID), dropPoint.x, dropPoint.y)
+    end
+  end
+end
+
+-- This should get called from the command manager
+-- .. I should make it so "commands" can be added to the command manager
+-- externally so that it doesn't have to be touched for every specific game.
+function this.ViewShopItems(commandData)
+  -- Check if they're actually in the right spot (the circle of power of the marketplace)
+  -- local buyerPoint = Utility.Point.Create(916.7, -1864)
+
+  if(this.shopItemList[1] == nil) then
+    DisplayTimedTextToPlayer(commandData.commandingPlayer, 0.0, 0.0, 30, "Shop is empty")
+  else
+    for k,v in ipairs(this.shopItemList) do
+      local i = CreateItem(FourCC(v.ID), 0.0, 0.0)
+        DisplayTimedTextToPlayer(commandData.commandingPlayer, 0.0, 0.0, 30, "===========================================")
+        DisplayTimedTextToPlayer(commandData.commandingPlayer, 0.0, 0.0, 30, "|c" .. ColorList.gold.hex_code ..  "Name: " .. "|r" .. GetItemName(i))
+        DisplayTimedTextToPlayer(commandData.commandingPlayer, 0.0, 0.0, 30, "|c" .. ColorList.green.hex_code .. "Price: " .. "|r" .. v.price)
+        DisplayTimedTextToPlayer(commandData.commandingPlayer, 0.0, 0.0, 30, "Description: " .. BlzGetItemDescription(i))
+      RemoveItem(i)
+    end
+  end
+end
+
+
+function this.DetermineLivingDefenders()
+  for k,v in ipairs(DefenderManager.DefenderList) do
+    local unitsRemaining = GetPlayerUnitCount(v.player, true)
+    if( v.alive and (unitsRemaining <= 0) ) then
+      print("Player dead")
+      v.alive = false
+    end
+  end
+end
+
+function this.UpdateAbominationTargets()
+  for k,v in ipairs(AbominationManager.AbominationList) do
+    local unitsRemaining = GetPlayerUnitCount(v.targetPlayer, true) -- Abominations don't have a reference to their defender. Only the player.
+    if(unitsRemaining <= 0) then
+      local randomInt = GetRandomInt(1, #DefenderManager.DefenderList)
+      if(DefenderManager.DefenderList[randomInt].alive) then
+        print("new target")
+        v.targetPlayer = DefenderManager.DefenderList[randomInt].player
+      end
+    end
+  end
+end
+
+function this.PrintGameParameters()
+  print("P: " .. this.gameParameters.level .. ";" .. tostring(this.gameParameters.upgradesFinished) .. ";" .. tostring(this.gameParameters.unitSteroidEnabled) .. ";" .. this.gameParameters.unitSteroidCounter)
+end
+
+function this.InitializeMultiboard()
 end
 HumanUnitList = 
 {
@@ -1671,6 +2162,193 @@ function UnitList_Init()
   Utility.TableMerge(AllUnitList, NeutralPassiveUnitList)
 end
 
+HumanUpgradeList =
+{
+  "Rhan",
+  "Rhpm",
+  "Rhrt",
+  "Rhra",
+  "Rhcd",
+  "Rhss",
+  "Rhde",
+  "Rhfc",
+  "Rhfl",
+  "Rhgb",
+  "Rhfs",
+  "Rhlh",
+  "Rhac",
+  "Rhme",
+  "Rhar",
+  "Rhri",
+  "Rhse",
+  "Rhpt",
+  "Rhst",
+  "Rhhb",
+  "Rhla",
+  "Rhsb",
+}
+
+OrcUpgradeList = 
+{
+  "Ropm",
+  "Robk",
+  "Robs",
+  "Robf",
+  "Roen",
+  "Rovs",
+  "Rolf",
+  "Ropg",
+  "Rows",
+  "Rorb",
+  "Rost",
+  "Rost",
+  "Rosp",
+  "Rowt",
+  "Roar",
+  "Rome",
+  "Rora",
+  "Rotr",
+  "Rwdm",
+  "Rowd",
+}
+
+UndeadUpgradeList = 
+{
+  "Rupm",
+  "Ruba",
+  "Rubu",
+  "Ruac",
+  "Rura",
+  "Rucr",
+  "Rusp",
+  "Rupc",
+  "Ruex",
+  "Rufb",
+  "Rugf",
+  "Rune",
+  "Rusl",
+  "Rusm",
+  "Rusf",
+  "Ruar",
+  "Rume",
+  "Ruwb",
+}
+
+NightElfUpgradeList =
+{
+  "Resi",
+  "Repm",
+  "Recb",
+  "Redc",
+  "Redt",
+  "Rehs",
+  "Reht",
+  "Reib",
+  "Reeb",
+  "Reec",
+  "Remk",
+  "Rema",
+  "Renb",
+  "Rerh",
+  "Rers",
+  "Resc",
+  "Resm",
+  "Resw",
+  "Reuv",
+  "Remg",
+  "Repb",
+  "Rews",
+}
+
+AllRacesUpgradeList = {}
+
+function UpgradeList_Init()
+   -- Merge the four races into one table:
+   Utility.TableMerge(AllRacesUpgradeList, HumanUpgradeList)
+   Utility.TableMerge(AllRacesUpgradeList, OrcUpgradeList)
+   Utility.TableMerge(AllRacesUpgradeList, UndeadUpgradeList)
+   Utility.TableMerge(AllRacesUpgradeList, NightElfUpgradeList)
+end
+Utility = {}
+
+
+--[[ Definition of Point ]]
+Utility.Point = {}
+
+function Utility.Point.Create(x, y)
+  local this = {}
+  this.x = x
+  this.y = y
+
+  function this.IsInRange(xMin, xMax, yMin, yMax)
+    local isInRange = true
+    if( not((xMin <= this.x) and (this.x <= xMax)) ) then
+      isInRange = false
+    end
+    if( not((yMin <= this.y) and (this.y <= yMax)) ) then
+      isInRange = false
+    end
+    return isInRange
+  end
+
+  return this
+end
+
+-- End Definition of Point
+
+
+function Utility.TriggerRegisterAllPlayersChat(which_trigger, message)
+  local all_players = (bj_MAX_PLAYER_SLOTS + 1 )
+  for i = 0, all_players do
+    TriggerRegisterPlayerChatEvent(which_trigger, Player(i), message, false)
+  end
+end
+
+function Utility.MySplit(input_str, sep)
+  if sep == nil then
+    sep = " "
+  end
+  local t={}
+  for str in string.gmatch(input_str, "([^"..sep.."]+)") do
+    table.insert(t, str)
+  end
+  return t
+end
+
+function Utility.TableMerge(t1, t2)
+  for k,v in ipairs(t2) do
+      table.insert(t1, v)
+  end
+end
+
+
+-- Unit Group Functions:
+function Utility.RemoveDeadUnitsFromGroup(unitGroup)
+  local function RemoveDeadUnits()
+    local u = GetEnumUnit()
+    if(IsUnitType(u, UNIT_TYPE_DEAD)) then
+      GroupRemoveUnit(unitGroup, u)
+    end
+    u = nil
+  end
+
+  ForGroup(unitGroup, RemoveDeadUnits)
+end
+
+function Utility.AttackRandomUnitOfPlayer(commandedUnit, targetPlayer)
+  local g = CreateGroup()
+  GroupEnumUnitsOfPlayer(g, targetPlayer, nil)
+  
+  local u = GroupPickRandomUnit(g)
+  -- IssueTargetOrder(commandedUnit, "attack", u)
+  IssuePointOrder(commandedUnit, "attack", GetUnitX(u), GetUnitY(u))
+  
+  DestroyGroup(g)
+  g = nil
+  u = nil
+end
+
+-- End Unit Group Functions
 function CreateNeutralPassiveBuildings()
     local p = Player(PLAYER_NEUTRAL_PASSIVE)
     local u
@@ -1701,6 +2379,7 @@ function CreateNeutralPassiveBuildings()
     SetResourceAmount(u, 100000)
     u = BlzCreateUnitWithSkin(p, FourCC("ngol"), 5184.0, 5504.0, 270.000, FourCC("ngol"))
     SetResourceAmount(u, 100000)
+    u = BlzCreateUnitWithSkin(p, FourCC("ncop"), 896.0, -1856.0, 270.000, FourCC("ncop"))
     u = BlzCreateUnitWithSkin(p, FourCC("ngol"), 6528.0, -4928.0, 270.000, FourCC("ngol"))
     SetResourceAmount(u, 100000)
     u = BlzCreateUnitWithSkin(p, FourCC("ngol"), 0.0, -3200.0, 270.000, FourCC("ngol"))

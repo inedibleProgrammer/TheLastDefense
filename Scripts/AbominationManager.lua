@@ -22,25 +22,42 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
     local levelRestraint = true
     local attemptCounter = 10
 
-    if(gameParameters.level < 3) then -- Trying to help with lag
-      attemptCounter = 1
-    end
+    -- if(gameParameters.level < 3) then -- Trying to help with lag
+    --   attemptCounter = 0
+    -- end
 
     -- Select a random unit that is not a hero, and meets the level restraint:
     while( ((isHero == true) or (levelRestraint == true)) and (attemptCounter >= 0) ) do
       local r = GetRandomInt(1, #AllUnitList)
-      local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
 
-      -- Conditions for an undesirable unit:
-      isHero = IsHeroUnitId(GetUnitTypeId(u))
-      levelRestraint = (BlzGetUnitMaxHP(u) > (gameParameters.level * gameParameters.healthMultiplier))
+      isHero = IsHeroUnitId(FourCC(AllUnitList[r]))
+      levelRestraint = (GetFoodUsed(FourCC(AllUnitList[r])) > gameParameters.level)
 
-      -- If the unit is desirable, remove it.
-      if(levelRestraint or isHero) then
-        RemoveUnit(u)
+      if(isHero or levelRestraint) then
+        -- Do nothing
+      else
+        local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
+        this.ApplyUnitModifications(u, gameParameters)
       end
 
-      this.ApplyUnitModifications(u, gameParameters)
+      -- if( (IsHeroUnitId(FourCC(AllUnitList[r]))) or (GetFoodUsed(FourCC(AllUnitList[r])) > gameParameters.level) ) then
+      --   -- Do nothing
+      -- else
+      --   local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
+      --   this.ApplyUnitModifications(u, gameParameters)
+      -- end
+      -- local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
+
+      -- Conditions for an undesirable unit:
+      -- isHero = IsHeroUnitId(GetUnitTypeId(u))
+      -- levelRestraint = (BlzGetUnitMaxHP(u) > (gameParameters.level * gameParameters.healthMultiplier))
+
+      -- If the unit is desirable, remove it.
+      -- if(levelRestraint or isHero) then
+      --   RemoveUnit(u)
+      -- end
+
+      -- this.ApplyUnitModifications(u, gameParameters)
 
       attemptCounter = attemptCounter - 1
       u = nil
@@ -49,7 +66,7 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
     -- Make all the lazy monsters attack!
     local function IsIdle()
       local idleUnit = GetEnumUnit()
-      if(not(GetUnitCurrentOrder(idleUnit) == 851983)) then
+      if( not(GetUnitCurrentOrder(idleUnit) == 851983) and (idleUnit ~= gameParameters.finalBoss) ) then
         Utility.AttackRandomUnitOfPlayer(idleUnit, this.targetPlayer)
       end
       idleUnit = nil

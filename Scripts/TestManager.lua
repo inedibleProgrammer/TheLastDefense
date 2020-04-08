@@ -5,10 +5,10 @@ local this = TestManager
 
 function this.Test_Init()
   -- Tests you want to run immediately:
-  this.PrintRuler()
+  -- this.PrintRuler()
   
-  this.Test_ItemDescription()
-  
+  -- this.Test_ItemDescription()
+  this.Test_ItemThings()
 end
 
 function this.PrintRuler()
@@ -29,3 +29,6 @@ function this.Test_ItemDescription()
   i = nil
 end
 
+function this.Test_ItemThings()
+  print(TheLastDefense.GetItemPrice("arsh"))
+end

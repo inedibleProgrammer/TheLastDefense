@@ -13,3 +13,8 @@ native BlzSetUnitRealField                         takes unit whichUnit, unitrea
 
 
 native BlzChangeMinimapTerrainTex                  takes string texFile returns boolean
+
+
+
+constant native GetFoodUsed         takes integer unitId returns integer
+constant native IsHeroUnitId        takes integer unitId returns boolean

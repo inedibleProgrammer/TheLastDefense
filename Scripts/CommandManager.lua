@@ -42,14 +42,18 @@ function this.CommandHandler()
     this.Command_Vision(commandData)
   elseif(commandData.tokens[2] == "unvision") then
     this.Command_Unvision(commandData)
+  elseif(commandData.tokens[2] == "cam") then
+    this.Command_CameraAdjust(commandData)
+  elseif(commandData.tokens[2] == "shop") then
+    TheLastDefense.ViewShopItems(commandData)
+  elseif(commandData.tokens[2] == "buy") then
+    TheLastDefense.BuyShopItem(commandData)
   elseif(commandData.tokens[2] == "abominations") then
     this.Command_PrintAbominations()
   elseif(commandData.tokens[2] == "defenders") then
     this.Command_PrintDefenders()
   elseif(commandData.tokens[2] == "parameters") then
     this.Command_PrintGameParameters()
-  elseif(commandData.tokens[2] == "cam") then
-    this.Command_CameraAdjust(commandData)
   else
     -- Do nothing.
   end
@@ -131,8 +135,18 @@ end
 
 --[[ END ALLIANCE COMMANDS ]]
 
+function this.Command_CameraAdjust(commandData)
+  local distance = tonumber(commandData.tokens[3])
+  if( not(distance == nil) ) then
+    if( (distance >= 500) and (distance <= 3000) ) then
+      SetCameraFieldForPlayer(commandData.commandingPlayer, CAMERA_FIELD_TARGET_DISTANCE, distance, 1.00)
+    end
+  end
+end
+
 
 --[[ GAME SPECIFIC COMMANDS ]]
+-- I need to make it so commands can be added externally.
 function this.Command_PrintAbominations()
   AbominationManager.PrintAbominationNames()
 end
@@ -149,11 +163,3 @@ end
 --[[ END GAME SPECIFIC COMMANDS ]]
 
 
-function this.Command_CameraAdjust(commandData)
-  local distance = tonumber(commandData.tokens[3])
-  if( not(distance == nil) ) then
-    if( (distance >= 500) and (distance <= 3000) ) then
-      SetCameraFieldForPlayer(commandData.commandingPlayer, CAMERA_FIELD_TARGET_DISTANCE, distance, 1.00)
-    end
-  end
-end
