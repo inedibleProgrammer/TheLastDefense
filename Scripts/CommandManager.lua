@@ -45,7 +45,11 @@ function this.CommandHandler()
   elseif(commandData.tokens[2] == "cam") then
     this.Command_CameraAdjust(commandData)
   elseif(commandData.tokens[2] == "shop") then
-    TheLastDefense.ViewShopItems(commandData)
+    if(commandData.tokens[3] ~= nil) then
+      TheLastDefense.BuyShopItem(commandData)
+    else
+      TheLastDefense.ViewShopItems(commandData)
+    end
   elseif(commandData.tokens[2] == "buy") then
     TheLastDefense.BuyShopItem(commandData)
   elseif(commandData.tokens[2] == "abominations") then
