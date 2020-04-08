@@ -20,6 +20,7 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
   function this.SpawnRandomUnit(gameParameters)    
     local isHero = true
     local levelRestraint = true
+    local badUnit = false
     local attemptCounter = 10
 
     -- if(gameParameters.level < 3) then -- Trying to help with lag
@@ -27,37 +28,37 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
     -- end
 
     -- Select a random unit that is not a hero, and meets the level restraint:
-    while( ((isHero == true) or (levelRestraint == true)) and (attemptCounter >= 0) ) do
+    while( ((isHero == true) or (levelRestraint == true) or (badUnit == true)) and (attemptCounter >= 0) ) do
       local r = GetRandomInt(1, #AllUnitList)
+      local uID = AllUnitList[r]
 
       isHero = IsHeroUnitId(FourCC(AllUnitList[r]))
-      levelRestraint = (GetFoodUsed(FourCC(AllUnitList[r])) > gameParameters.level)
+      levelRestraint = (GetFoodUsed(FourCC(uID)) > gameParameters.level)
+
+      if(gameParameters.level < 1) then
+        if(uID == "obai" -- Baine
+        or uID == "nmed" -- Medivh
+        or uID == "hcth" -- Captain
+        or uID == "uktn") -- Kel'Thuzad
+        then
+          badUnit = true
+        end
+      end
+
+      if(uID == "nspc") then -- Support column
+        badUnit = true
+      end
 
       if(isHero or levelRestraint) then
         -- Do nothing
       else
-        local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
-        this.ApplyUnitModifications(u, gameParameters)
+        if(badUnit) then
+          -- Do nothing
+        else
+          local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
+          this.ApplyUnitModifications(u, gameParameters)
+        end
       end
-
-      -- if( (IsHeroUnitId(FourCC(AllUnitList[r]))) or (GetFoodUsed(FourCC(AllUnitList[r])) > gameParameters.level) ) then
-      --   -- Do nothing
-      -- else
-      --   local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
-      --   this.ApplyUnitModifications(u, gameParameters)
-      -- end
-      -- local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
-
-      -- Conditions for an undesirable unit:
-      -- isHero = IsHeroUnitId(GetUnitTypeId(u))
-      -- levelRestraint = (BlzGetUnitMaxHP(u) > (gameParameters.level * gameParameters.healthMultiplier))
-
-      -- If the unit is desirable, remove it.
-      -- if(levelRestraint or isHero) then
-      --   RemoveUnit(u)
-      -- end
-
-      -- this.ApplyUnitModifications(u, gameParameters)
 
       attemptCounter = attemptCounter - 1
       u = nil

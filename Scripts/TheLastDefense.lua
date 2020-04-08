@@ -9,13 +9,13 @@ this.gameParameters.nSpawnCount = 1 -- Number of units to spawn each spawn tick
 this.gameParameters.spawnPeriod = 10 -- Seconds
 this.gameParameters.nBurstCount = 4 -- Number of units to spawn each burst tick
 this.gameParameters.burstPeriod = 30 -- Seconds
-this.gameParameters.upgradePeriod = 180 -- Seconds
+this.gameParameters.upgradePeriod = 300 -- Seconds
 this.gameParameters.healthMultiplier = 100 -- HP, Are there units with less than this * level?
 this.gameParameters.level = 0 -- Scale monster spawning
 this.gameParameters.upgradesFinished = false
 this.gameParameters.unitSteroidEnabled = false -- Start adding HP to units
 this.gameParameters.unitSteroidCounter = 1 -- Add 100 * this counter HP to units
-this.gameParameters.shopUpdatePeriod = 120 -- Seconds
+this.gameParameters.shopUpdatePeriod = 30 -- Seconds
 
 this.multiboard = nil
 this.multiboard_initialized = false
@@ -103,19 +103,6 @@ function this.TheLastDefenseHandler()
     end
 
     MultiboardSetItemValueBJ(this.multiboard, 1, this.multiboard_rows + 1, "|c" .. ColorList.gold.hex_code .. "GameTime:" .. "|r")
-
-    -- MultiboardSetItemValueBJ(this.multiboard, 1, 1, "Test")
-    -- MultiboardSetItemValueBJ(this.multiboard, 2, 1, "|c" .. ColorList.light_blue.hex_code .. "Test2" .. "|r")
-    -- this.multiboard.Initialize()
-    -- this.multiboard.Display(true)
-    -- this.multiboard.Minimize(true)
-    
-    -- this.multiboard.SetStyle(0, 0, 0.14)
-    -- this.multiboard.SetItem(0, 0, "|c" .. ColorList.light_blue.hex_code .. "Test" .. "|r")
-
-    -- MultiboardSetItemStyleBJ(this.multiboard.board, 1, 1, true, false)
-    -- MultiboardSetItemWidthBJ(this.multiboard.board, )
-    
   end
 
   -- Update ScoreBoard:
@@ -154,7 +141,7 @@ function this.TheLastDefenseHandler()
 
   -- After a certain point, we should ramp up the difficulty:
   if( (this.gameParameters.level == 5) and not(this.gameParameters.upgradesFinished) ) then
-    this.gameParameters.healthMultiplier = 200
+    -- this.gameParameters.healthMultiplier = 200 Deprecated with new food system
     this.DoUpgrades()
   end
 
@@ -261,8 +248,8 @@ end
 function this.UpdateShopItems()
   -- First, clear the items in the shop list
   for k,v in ipairs(this.shopItemList) do
-    -- this.shopItemList[k] = nil
-    table.remove(this.shopItemList)
+    this.shopItemList[k] = nil
+    -- table.remove(this.shopItemList)
   end
 
   -- Now fill the list with random item codes
@@ -287,18 +274,16 @@ function this.BuyShopItem(commandData)
   elseif (itemToBuyString == "4") then nItemToBuy = 4
   else -- do nothing
   end
-  print("here1: " .. itemToBuyString .. nItemToBuy)
 
   -- Don't bother to do anything unless the item to buy makes sense
   if( (1 <= nItemToBuy) and (nItemToBuy <= 4) ) then
-    print("here2")
     local dropPoint = {}
     local playerCurrentGold = GetPlayerState(commandData.commandingPlayer, PLAYER_STATE_RESOURCE_GOLD)
     local itemPrice = this.shopItemList[nItemToBuy].price
-    print("here3")
+
     -- Don't bother to do anything unless the player has enough gold
     if(playerCurrentGold >= itemPrice) then
-      print("here4")
+
       SetPlayerState(commandData.commandingPlayer, PLAYER_STATE_RESOURCE_GOLD, playerCurrentGold - itemPrice)
 
       -- Determine the dropping point
