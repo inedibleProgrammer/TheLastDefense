@@ -46,7 +46,7 @@ end
 
 function Utility.TableMerge(t1, t2)
   for k,v in ipairs(t2) do
-    table.insert(t1, v)
+      table.insert(t1, v)
   end
 end
 
@@ -69,6 +69,7 @@ function Utility.AttackRandomUnitOfPlayer(commandedUnit, targetPlayer)
   GroupEnumUnitsOfPlayer(g, targetPlayer, nil)
   
   local u = GroupPickRandomUnit(g)
+  -- IssueTargetOrder(commandedUnit, "attack", u)
   IssuePointOrder(commandedUnit, "attack", GetUnitX(u), GetUnitY(u))
   
   DestroyGroup(g)

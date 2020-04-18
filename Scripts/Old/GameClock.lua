@@ -11,13 +11,6 @@ function this.Init()
   this.clockTrigger = CreateTrigger()
   TriggerAddAction(this.clockTrigger, this.ClockHandler)
   TriggerRegisterTimerEvent(this.clockTrigger, 1.00, true)
-
-  --[[ Add Commands: ]]
-  local function PrintTime(commandData)
-    local currentTimeString = "|c" .. ColorManager.GetColorCode("gold") .. "Time Elapsed: |r" .. this.hours .. ":" .. this.minutes .. ":" .. this.seconds
-    DisplayTimedTextToPlayer(commandData.commandingPlayer, 0.00, 0.00, 10, currentTimeString)
-  end
-  CommandManager.AddCommand("time", PrintTime)
 end
 
 function this.ClockHandler()
