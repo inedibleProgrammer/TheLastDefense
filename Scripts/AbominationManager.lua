@@ -83,6 +83,7 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
   function this.ApplyUnitModifications(relevantUnit, gameParameters)
     SetUnitCreepGuard(relevantUnit, false)
     RemoveGuardPosition(relevantUnit)
+    SetUnitColor(relevantUnit, PLAYER_COLOR_COAL) -- Or should I change the colors of the AI players?
 
     if(gameParameters.unitSteroidEnabled) then
       local currentHP = BlzGetUnitMaxHP(relevantUnit)

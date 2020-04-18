@@ -15,7 +15,7 @@ this.gameParameters.level = 0 -- Scale monster spawning
 this.gameParameters.upgradesFinished = false
 this.gameParameters.unitSteroidEnabled = false -- Start adding HP to units
 this.gameParameters.unitSteroidCounter = 1 -- Add 100 * this counter HP to units
-this.gameParameters.shopUpdatePeriod = 30 -- Seconds
+this.gameParameters.shopUpdatePeriod = 300 -- Seconds
 
 this.multiboard = nil
 this.multiboard_initialized = false
@@ -50,12 +50,12 @@ function this.Init()
     TriggerRegisterPlayerUnitEvent(this.killCountingTrigger, v.player, EVENT_PLAYER_UNIT_DEATH, nil)
   end
 
-    --[[ Setup the trigger that handles when players leave the game: ]]
-    this.playerLeavingTrigger = CreateTrigger()
-    TriggerAddAction(this.playerLeavingTrigger, this.PlayerLeavingHandler)
-    for k,v in ipairs(DefenderManager.DefenderList) do
-      TriggerRegisterPlayerEvent(this.playerLeavingTrigger, v.player, EVENT_PLAYER_LEAVE)
-    end
+  --[[ Setup the trigger that handles when players leave the game: ]]
+  this.playerLeavingTrigger = CreateTrigger()
+  TriggerAddAction(this.playerLeavingTrigger, this.PlayerLeavingHandler)
+  for k,v in ipairs(DefenderManager.DefenderList) do
+    TriggerRegisterPlayerEvent(this.playerLeavingTrigger, v.player, EVENT_PLAYER_LEAVE)
+  end
 
   --[[ Load AI for the defenders that are AI controlled: ]]
   for k,v in ipairs(DefenderManager.DefenderList) do

@@ -41,6 +41,10 @@ function Init()
   xpcall(DefenderManager.Init, print)
   --print("DefenderManagerInit end")
 
+  --print("SpiritManagerInit start")
+  xpcall(SpiritManager.Init, print)
+  --print("SpiritManagerInit end")
+
   --print("MultiboardManagerInit start")
   xpcall(MultiboardManager.Init, print)
   --print("MultiboardManagerInit end")

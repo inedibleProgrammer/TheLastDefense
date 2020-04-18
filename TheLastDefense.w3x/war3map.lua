@@ -1,13 +1,13 @@
+gg_trg_ItemTesting = nil
+gg_trg_AUnitDies = nil
+gg_trg_camera = nil
+gg_trg_HealUnit = nil
 gg_trg_Upgrades = nil
 gg_trg_KillRandomUnitInGroup = nil
 gg_trg_CreateUnitAndAttackGround = nil
 gg_trg_Melee_Initialization = nil
 gg_trg_CallInit = nil
-gg_trg_HealUnit = nil
 gg_unit_nten_0015 = nil
-gg_trg_camera = nil
-gg_trg_AUnitDies = nil
-gg_trg_ItemTesting = nil
 function InitGlobals()
 end
 
@@ -774,6 +774,10 @@ function Init()
   xpcall(DefenderManager.Init, print)
   --print("DefenderManagerInit end")
 
+    --print("SpiritManagerInit start")
+    xpcall(SpiritManager.Init, print)
+    --print("SpiritManagerInit end")
+
   --print("MultiboardManagerInit start")
   xpcall(MultiboardManager.Init, print)
   --print("MultiboardManagerInit end")
@@ -1175,6 +1179,83 @@ function this.GetBoard(title, nRows, nColumns)
   -- local m = Multiboard.Create("MY_FIRST_MULTIBOARD", 4, 2)
   local m = Multiboard.Create(title, nRows, nColumns)
   return m
+end
+SpiritManager = {}
+
+local this = SpiritManager
+
+this.possibleSpiritList =
+{
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+}
+
+this.SpiritList = {}
+
+--[[ Definition of a Spirit: ]]
+local Spirit = {}
+
+function Spirit.Create(player)
+  local this = {}
+  this.player = player
+  this.unit = CreateUnit(this.player, FourCC("ewsp"), 0.0, 0.0, 0.0)
+  this.nAbilityPoints = 0
+  this.abilityList = {}
+
+  return this
+end
+
+-- End Definition of a Spirit
+
+function this.Init()
+  this.InitializeSpirits()
+end
+
+function this.InitializeSpirits()
+  for k,v in ipairs(this.possibleSpiritList) do
+    if(GetPlayerSlotState(Player(v)) == PLAYER_SLOT_STATE_PLAYING) then
+      local function RemoveAllUnits()
+        local u = GetEnumUnit()
+        RemoveUnit(u)
+        u = nil
+      end
+      -- Destroy all of their units:
+      local g = CreateGroup()
+      GroupEnumUnitsOfPlayer(g, Player(v))
+      ForGroup(g, RemoveAllUnits)
+      DestroyGroup(g)
+      g = nil
+      -- Create their wisp:
+      local s = Spirit.Create(Player(v))
+      -- Make the wisp invulnerable:
+      SetUnitInvulnerable(s.unit, true)
+      -- Give the wisp mana and regen
+      -- 
+      -- Add the wisp to the list
+      table.insert(this.SpiritList, s)
+
+      -- Trigger to prevent building:
+      local function BuildTriggerHandler()
+        local u = GetConstructingStructure()
+        TriggerSleepAction(0.1)
+        IssueImmediateOrderById(u, 851976) -- "Cancel"
+      end
+      s.buildTrigger = CreateTrigger()
+      TriggerAddAction(s.buildTrigger, BuildTriggerHandler)
+      TriggerRegisterPlayerUnitEvent(s.buildTrigger, Player(v), EVENT_PLAYER_UNIT_CONSTRUCT_START, nil)
+
+
+      -- Remove wisp abilities
+      UnitRemoveAbility(s.unit, FourCC("Aren")) -- renew
+      UnitRemoveAbility(s.unit, FourCC("Adtn")) -- detonate
+      UnitRemoveAbility(s.unit, FourCC("Awha")) -- gather
+      UnitRemoveAbility(s.unit, FourCC("Ault")) -- ultravision
+    end
+  end
 end
 TestManager = {}
 
@@ -2462,26 +2543,62 @@ function InitCustomPlayerSlots()
     SetPlayerRacePreference(Player(3), RACE_PREF_RANDOM)
     SetPlayerRaceSelectable(Player(3), true)
     SetPlayerController(Player(3), MAP_CONTROL_USER)
-    SetPlayerStartLocation(Player(10), 4)
-    ForcePlayerStartLocation(Player(10), 4)
+    SetPlayerStartLocation(Player(4), 4)
+    ForcePlayerStartLocation(Player(4), 4)
+    SetPlayerColor(Player(4), ConvertPlayerColor(4))
+    SetPlayerRacePreference(Player(4), RACE_PREF_NIGHTELF)
+    SetPlayerRaceSelectable(Player(4), false)
+    SetPlayerController(Player(4), MAP_CONTROL_USER)
+    SetPlayerStartLocation(Player(5), 5)
+    ForcePlayerStartLocation(Player(5), 5)
+    SetPlayerColor(Player(5), ConvertPlayerColor(5))
+    SetPlayerRacePreference(Player(5), RACE_PREF_NIGHTELF)
+    SetPlayerRaceSelectable(Player(5), false)
+    SetPlayerController(Player(5), MAP_CONTROL_USER)
+    SetPlayerStartLocation(Player(6), 6)
+    ForcePlayerStartLocation(Player(6), 6)
+    SetPlayerColor(Player(6), ConvertPlayerColor(6))
+    SetPlayerRacePreference(Player(6), RACE_PREF_NIGHTELF)
+    SetPlayerRaceSelectable(Player(6), false)
+    SetPlayerController(Player(6), MAP_CONTROL_USER)
+    SetPlayerStartLocation(Player(7), 7)
+    ForcePlayerStartLocation(Player(7), 7)
+    SetPlayerColor(Player(7), ConvertPlayerColor(7))
+    SetPlayerRacePreference(Player(7), RACE_PREF_NIGHTELF)
+    SetPlayerRaceSelectable(Player(7), false)
+    SetPlayerController(Player(7), MAP_CONTROL_USER)
+    SetPlayerStartLocation(Player(8), 8)
+    ForcePlayerStartLocation(Player(8), 8)
+    SetPlayerColor(Player(8), ConvertPlayerColor(8))
+    SetPlayerRacePreference(Player(8), RACE_PREF_NIGHTELF)
+    SetPlayerRaceSelectable(Player(8), false)
+    SetPlayerController(Player(8), MAP_CONTROL_USER)
+    SetPlayerStartLocation(Player(9), 9)
+    ForcePlayerStartLocation(Player(9), 9)
+    SetPlayerColor(Player(9), ConvertPlayerColor(9))
+    SetPlayerRacePreference(Player(9), RACE_PREF_NIGHTELF)
+    SetPlayerRaceSelectable(Player(9), false)
+    SetPlayerController(Player(9), MAP_CONTROL_USER)
+    SetPlayerStartLocation(Player(10), 10)
+    ForcePlayerStartLocation(Player(10), 10)
     SetPlayerColor(Player(10), ConvertPlayerColor(10))
     SetPlayerRacePreference(Player(10), RACE_PREF_UNDEAD)
     SetPlayerRaceSelectable(Player(10), false)
     SetPlayerController(Player(10), MAP_CONTROL_COMPUTER)
-    SetPlayerStartLocation(Player(14), 5)
-    ForcePlayerStartLocation(Player(14), 5)
+    SetPlayerStartLocation(Player(14), 11)
+    ForcePlayerStartLocation(Player(14), 11)
     SetPlayerColor(Player(14), ConvertPlayerColor(14))
     SetPlayerRacePreference(Player(14), RACE_PREF_UNDEAD)
     SetPlayerRaceSelectable(Player(14), false)
     SetPlayerController(Player(14), MAP_CONTROL_COMPUTER)
-    SetPlayerStartLocation(Player(18), 6)
-    ForcePlayerStartLocation(Player(18), 6)
+    SetPlayerStartLocation(Player(18), 12)
+    ForcePlayerStartLocation(Player(18), 12)
     SetPlayerColor(Player(18), ConvertPlayerColor(18))
     SetPlayerRacePreference(Player(18), RACE_PREF_UNDEAD)
     SetPlayerRaceSelectable(Player(18), false)
     SetPlayerController(Player(18), MAP_CONTROL_COMPUTER)
-    SetPlayerStartLocation(Player(22), 7)
-    ForcePlayerStartLocation(Player(22), 7)
+    SetPlayerStartLocation(Player(22), 13)
+    ForcePlayerStartLocation(Player(22), 13)
     SetPlayerColor(Player(22), ConvertPlayerColor(22))
     SetPlayerRacePreference(Player(22), RACE_PREF_UNDEAD)
     SetPlayerRaceSelectable(Player(22), false)
@@ -2553,6 +2670,78 @@ function InitCustomTeams()
     SetPlayerAllianceStateVisionBJ(Player(22), Player(10), true)
     SetPlayerAllianceStateVisionBJ(Player(22), Player(14), true)
     SetPlayerAllianceStateVisionBJ(Player(22), Player(18), true)
+    SetPlayerTeam(Player(4), 2)
+    SetPlayerState(Player(4), PLAYER_STATE_ALLIED_VICTORY, 1)
+    SetPlayerTeam(Player(5), 2)
+    SetPlayerState(Player(5), PLAYER_STATE_ALLIED_VICTORY, 1)
+    SetPlayerTeam(Player(6), 2)
+    SetPlayerState(Player(6), PLAYER_STATE_ALLIED_VICTORY, 1)
+    SetPlayerTeam(Player(7), 2)
+    SetPlayerState(Player(7), PLAYER_STATE_ALLIED_VICTORY, 1)
+    SetPlayerTeam(Player(8), 2)
+    SetPlayerState(Player(8), PLAYER_STATE_ALLIED_VICTORY, 1)
+    SetPlayerTeam(Player(9), 2)
+    SetPlayerState(Player(9), PLAYER_STATE_ALLIED_VICTORY, 1)
+    SetPlayerAllianceStateAllyBJ(Player(4), Player(5), true)
+    SetPlayerAllianceStateAllyBJ(Player(4), Player(6), true)
+    SetPlayerAllianceStateAllyBJ(Player(4), Player(7), true)
+    SetPlayerAllianceStateAllyBJ(Player(4), Player(8), true)
+    SetPlayerAllianceStateAllyBJ(Player(4), Player(9), true)
+    SetPlayerAllianceStateAllyBJ(Player(5), Player(4), true)
+    SetPlayerAllianceStateAllyBJ(Player(5), Player(6), true)
+    SetPlayerAllianceStateAllyBJ(Player(5), Player(7), true)
+    SetPlayerAllianceStateAllyBJ(Player(5), Player(8), true)
+    SetPlayerAllianceStateAllyBJ(Player(5), Player(9), true)
+    SetPlayerAllianceStateAllyBJ(Player(6), Player(4), true)
+    SetPlayerAllianceStateAllyBJ(Player(6), Player(5), true)
+    SetPlayerAllianceStateAllyBJ(Player(6), Player(7), true)
+    SetPlayerAllianceStateAllyBJ(Player(6), Player(8), true)
+    SetPlayerAllianceStateAllyBJ(Player(6), Player(9), true)
+    SetPlayerAllianceStateAllyBJ(Player(7), Player(4), true)
+    SetPlayerAllianceStateAllyBJ(Player(7), Player(5), true)
+    SetPlayerAllianceStateAllyBJ(Player(7), Player(6), true)
+    SetPlayerAllianceStateAllyBJ(Player(7), Player(8), true)
+    SetPlayerAllianceStateAllyBJ(Player(7), Player(9), true)
+    SetPlayerAllianceStateAllyBJ(Player(8), Player(4), true)
+    SetPlayerAllianceStateAllyBJ(Player(8), Player(5), true)
+    SetPlayerAllianceStateAllyBJ(Player(8), Player(6), true)
+    SetPlayerAllianceStateAllyBJ(Player(8), Player(7), true)
+    SetPlayerAllianceStateAllyBJ(Player(8), Player(9), true)
+    SetPlayerAllianceStateAllyBJ(Player(9), Player(4), true)
+    SetPlayerAllianceStateAllyBJ(Player(9), Player(5), true)
+    SetPlayerAllianceStateAllyBJ(Player(9), Player(6), true)
+    SetPlayerAllianceStateAllyBJ(Player(9), Player(7), true)
+    SetPlayerAllianceStateAllyBJ(Player(9), Player(8), true)
+    SetPlayerAllianceStateVisionBJ(Player(4), Player(5), true)
+    SetPlayerAllianceStateVisionBJ(Player(4), Player(6), true)
+    SetPlayerAllianceStateVisionBJ(Player(4), Player(7), true)
+    SetPlayerAllianceStateVisionBJ(Player(4), Player(8), true)
+    SetPlayerAllianceStateVisionBJ(Player(4), Player(9), true)
+    SetPlayerAllianceStateVisionBJ(Player(5), Player(4), true)
+    SetPlayerAllianceStateVisionBJ(Player(5), Player(6), true)
+    SetPlayerAllianceStateVisionBJ(Player(5), Player(7), true)
+    SetPlayerAllianceStateVisionBJ(Player(5), Player(8), true)
+    SetPlayerAllianceStateVisionBJ(Player(5), Player(9), true)
+    SetPlayerAllianceStateVisionBJ(Player(6), Player(4), true)
+    SetPlayerAllianceStateVisionBJ(Player(6), Player(5), true)
+    SetPlayerAllianceStateVisionBJ(Player(6), Player(7), true)
+    SetPlayerAllianceStateVisionBJ(Player(6), Player(8), true)
+    SetPlayerAllianceStateVisionBJ(Player(6), Player(9), true)
+    SetPlayerAllianceStateVisionBJ(Player(7), Player(4), true)
+    SetPlayerAllianceStateVisionBJ(Player(7), Player(5), true)
+    SetPlayerAllianceStateVisionBJ(Player(7), Player(6), true)
+    SetPlayerAllianceStateVisionBJ(Player(7), Player(8), true)
+    SetPlayerAllianceStateVisionBJ(Player(7), Player(9), true)
+    SetPlayerAllianceStateVisionBJ(Player(8), Player(4), true)
+    SetPlayerAllianceStateVisionBJ(Player(8), Player(5), true)
+    SetPlayerAllianceStateVisionBJ(Player(8), Player(6), true)
+    SetPlayerAllianceStateVisionBJ(Player(8), Player(7), true)
+    SetPlayerAllianceStateVisionBJ(Player(8), Player(9), true)
+    SetPlayerAllianceStateVisionBJ(Player(9), Player(4), true)
+    SetPlayerAllianceStateVisionBJ(Player(9), Player(5), true)
+    SetPlayerAllianceStateVisionBJ(Player(9), Player(6), true)
+    SetPlayerAllianceStateVisionBJ(Player(9), Player(7), true)
+    SetPlayerAllianceStateVisionBJ(Player(9), Player(8), true)
 end
 
 function InitAllyPriorities()
@@ -2566,40 +2755,91 @@ function InitAllyPriorities()
     SetStartLocPrioCount(3, 2)
     SetStartLocPrio(3, 0, 0, MAP_LOC_PRIO_HIGH)
     SetStartLocPrio(3, 1, 2, MAP_LOC_PRIO_LOW)
-    SetStartLocPrioCount(4, 6)
-    SetStartLocPrio(4, 0, 0, MAP_LOC_PRIO_LOW)
-    SetStartLocPrio(4, 1, 1, MAP_LOC_PRIO_LOW)
-    SetStartLocPrio(4, 2, 2, MAP_LOC_PRIO_LOW)
-    SetStartLocPrio(4, 3, 3, MAP_LOC_PRIO_LOW)
-    SetStartLocPrio(4, 4, 6, MAP_LOC_PRIO_LOW)
-    SetStartLocPrio(4, 5, 7, MAP_LOC_PRIO_LOW)
-    SetEnemyStartLocPrioCount(4, 6)
-    SetEnemyStartLocPrio(4, 0, 0, MAP_LOC_PRIO_LOW)
-    SetEnemyStartLocPrio(4, 1, 1, MAP_LOC_PRIO_LOW)
-    SetEnemyStartLocPrio(4, 2, 2, MAP_LOC_PRIO_LOW)
-    SetEnemyStartLocPrio(4, 3, 3, MAP_LOC_PRIO_LOW)
-    SetEnemyStartLocPrio(4, 4, 6, MAP_LOC_PRIO_LOW)
-    SetEnemyStartLocPrio(4, 5, 7, MAP_LOC_PRIO_LOW)
-    SetStartLocPrioCount(5, 4)
-    SetStartLocPrio(5, 0, 0, MAP_LOC_PRIO_LOW)
-    SetStartLocPrio(5, 1, 1, MAP_LOC_PRIO_LOW)
-    SetStartLocPrio(5, 2, 2, MAP_LOC_PRIO_LOW)
-    SetStartLocPrio(5, 3, 3, MAP_LOC_PRIO_LOW)
-    SetEnemyStartLocPrioCount(5, 4)
-    SetEnemyStartLocPrio(5, 0, 0, MAP_LOC_PRIO_LOW)
-    SetEnemyStartLocPrio(5, 1, 1, MAP_LOC_PRIO_LOW)
-    SetEnemyStartLocPrio(5, 2, 2, MAP_LOC_PRIO_LOW)
-    SetEnemyStartLocPrio(5, 3, 3, MAP_LOC_PRIO_LOW)
-    SetStartLocPrioCount(6, 4)
-    SetStartLocPrio(6, 0, 0, MAP_LOC_PRIO_LOW)
-    SetStartLocPrio(6, 1, 1, MAP_LOC_PRIO_LOW)
-    SetStartLocPrio(6, 2, 2, MAP_LOC_PRIO_LOW)
-    SetStartLocPrio(6, 3, 3, MAP_LOC_PRIO_LOW)
-    SetEnemyStartLocPrioCount(6, 4)
-    SetEnemyStartLocPrio(6, 0, 0, MAP_LOC_PRIO_LOW)
-    SetEnemyStartLocPrio(6, 1, 1, MAP_LOC_PRIO_LOW)
-    SetEnemyStartLocPrio(6, 2, 2, MAP_LOC_PRIO_LOW)
-    SetEnemyStartLocPrio(6, 3, 3, MAP_LOC_PRIO_LOW)
+    SetStartLocPrioCount(4, 5)
+    SetStartLocPrio(4, 0, 5, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(4, 1, 6, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(4, 2, 7, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(4, 3, 8, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(4, 4, 9, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrioCount(5, 5)
+    SetStartLocPrio(5, 0, 4, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(5, 1, 6, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(5, 2, 7, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(5, 3, 8, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(5, 4, 9, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrioCount(6, 5)
+    SetStartLocPrio(6, 0, 4, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(6, 1, 5, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(6, 2, 7, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(6, 3, 8, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(6, 4, 9, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrioCount(7, 5)
+    SetStartLocPrio(7, 0, 4, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(7, 1, 5, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(7, 2, 6, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(7, 3, 8, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(7, 4, 9, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrioCount(8, 5)
+    SetStartLocPrio(8, 0, 4, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(8, 1, 5, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(8, 2, 6, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(8, 3, 7, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(8, 4, 9, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrioCount(9, 5)
+    SetStartLocPrio(9, 0, 4, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(9, 1, 5, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(9, 2, 6, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(9, 3, 7, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(9, 4, 8, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrioCount(10, 6)
+    SetStartLocPrio(10, 0, 0, MAP_LOC_PRIO_LOW)
+    SetStartLocPrio(10, 1, 1, MAP_LOC_PRIO_LOW)
+    SetStartLocPrio(10, 2, 2, MAP_LOC_PRIO_LOW)
+    SetStartLocPrio(10, 3, 3, MAP_LOC_PRIO_LOW)
+    SetStartLocPrio(10, 4, 12, MAP_LOC_PRIO_LOW)
+    SetStartLocPrio(10, 5, 13, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrioCount(10, 6)
+    SetEnemyStartLocPrio(10, 0, 0, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(10, 1, 1, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(10, 2, 2, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(10, 3, 3, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(10, 4, 12, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(10, 5, 13, MAP_LOC_PRIO_LOW)
+    SetStartLocPrioCount(11, 4)
+    SetStartLocPrio(11, 0, 0, MAP_LOC_PRIO_LOW)
+    SetStartLocPrio(11, 1, 1, MAP_LOC_PRIO_LOW)
+    SetStartLocPrio(11, 2, 2, MAP_LOC_PRIO_LOW)
+    SetStartLocPrio(11, 3, 3, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrioCount(11, 4)
+    SetEnemyStartLocPrio(11, 0, 0, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(11, 1, 1, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(11, 2, 2, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(11, 3, 3, MAP_LOC_PRIO_LOW)
+    SetStartLocPrioCount(12, 10)
+    SetStartLocPrio(12, 0, 0, MAP_LOC_PRIO_LOW)
+    SetStartLocPrio(12, 1, 1, MAP_LOC_PRIO_LOW)
+    SetStartLocPrio(12, 2, 2, MAP_LOC_PRIO_LOW)
+    SetStartLocPrio(12, 3, 3, MAP_LOC_PRIO_LOW)
+    SetStartLocPrio(12, 4, 4, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(12, 5, 5, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(12, 6, 6, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(12, 7, 7, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(12, 8, 8, MAP_LOC_PRIO_HIGH)
+    SetStartLocPrio(12, 9, 9, MAP_LOC_PRIO_HIGH)
+    SetEnemyStartLocPrioCount(12, 7)
+    SetEnemyStartLocPrio(12, 0, 0, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(12, 1, 1, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(12, 2, 2, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(12, 3, 3, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(12, 4, 4, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(12, 5, 6, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(12, 6, 9, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrioCount(13, 5)
+    SetEnemyStartLocPrio(13, 0, 4, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(13, 1, 5, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(13, 2, 7, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(13, 3, 8, MAP_LOC_PRIO_LOW)
+    SetEnemyStartLocPrio(13, 4, 9, MAP_LOC_PRIO_LOW)
 end
 
 function main()
@@ -2619,17 +2859,23 @@ end
 function config()
     SetMapName("TRIGSTR_001")
     SetMapDescription("TRIGSTR_003")
-    SetPlayers(8)
-    SetTeams(8)
+    SetPlayers(14)
+    SetTeams(14)
     SetGamePlacement(MAP_PLACEMENT_TEAMS_TOGETHER)
     DefineStartLocation(0, -1728.0, -5952.0)
     DefineStartLocation(1, -4352.0, -6464.0)
     DefineStartLocation(2, 4800.0, -6144.0)
     DefineStartLocation(3, 1152.0, -5824.0)
-    DefineStartLocation(4, -5248.0, 4608.0)
-    DefineStartLocation(5, -6016.0, 6016.0)
-    DefineStartLocation(6, -4160.0, 6080.0)
-    DefineStartLocation(7, -2560.0, 5696.0)
+    DefineStartLocation(4, 1152.0, -256.0)
+    DefineStartLocation(5, 1152.0, -256.0)
+    DefineStartLocation(6, 1152.0, -256.0)
+    DefineStartLocation(7, 1152.0, -256.0)
+    DefineStartLocation(8, 1152.0, -256.0)
+    DefineStartLocation(9, 1152.0, -256.0)
+    DefineStartLocation(10, -5248.0, 4608.0)
+    DefineStartLocation(11, -6016.0, 6016.0)
+    DefineStartLocation(12, -4160.0, 6080.0)
+    DefineStartLocation(13, -2560.0, 5696.0)
     InitCustomPlayerSlots()
     InitCustomTeams()
     InitAllyPriorities()
