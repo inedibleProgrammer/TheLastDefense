@@ -8,4 +8,6 @@ function Init()
   xpcall(GameClock.Init, print)
 
   xpcall(PlayerManager.Init, print)
+
+  xpcall(TheLastDefense.Init, print)
 end
