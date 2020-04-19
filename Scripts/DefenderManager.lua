@@ -64,3 +64,19 @@ function this.Init()
   end
   CommandManager.AddCommand("defenders", DefenderData)
 end
+
+function this.DetermineLivingDefenders()
+  for k,v in ipairs(DefenderManager.DefenderList) do
+    local unitsRemaining = GetPlayerUnitCount(v.player, true)
+    if( v.alive and (unitsRemaining <= 0) ) then
+      print("Player dead")
+      v.alive = false
+    end
+  end
+end
+
+--[[ The Main Process: ]]
+function this.Process()
+  -- if a defender has lost all his units he is dead
+  this.DetermineLivingDefenders()
+end
