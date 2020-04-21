@@ -10,6 +10,7 @@ function Defender.Create(playerNumber)
   this.playerNumber = playerNumber
   this.player = Player(this.playerNumber)
   this.killCount = 0
+  this.alive = false
 
   return this
 end
@@ -20,6 +21,7 @@ function this.Init()
   for k,v in ipairs(PlayerManager.PlayerList) do
     if (v.number < 4) then
       local d = Defender.Create(v.number)
+      d.alive = true
       table.insert(this.DefenderList, d)
     end
   end
@@ -59,14 +61,18 @@ function this.Init()
   --[[ Add Commands: ]]
   local function DefenderData()
     for k,v in ipairs(this.DefenderList) do
-      print(GetPlayerName(v.player))
+      local defenderData = "D"
+      defenderData = defenderData .. ";" .. GetPlayerName(v.player)
+      defenderData = defenderData .. ";" .. v.killCount
+      defenderData = defenderData .. ";" .. v.alive
+      print(defenderData)
     end
   end
   CommandManager.AddCommand("defenders", DefenderData)
 end
 
 function this.DetermineLivingDefenders()
-  for k,v in ipairs(DefenderManager.DefenderList) do
+  for k,v in ipairs(this.DefenderList) do
     local unitsRemaining = GetPlayerUnitCount(v.player, true)
     if( v.alive and (unitsRemaining <= 0) ) then
       print("Player dead")

@@ -8,9 +8,15 @@ function this.Init()
 
   xpcall(UpgradeList_Init, print)
 
+  xpcall(ShopManager.Init, print)
+
   xpcall(DefenderManager.Init, print)
 
   xpcall(AbominationManager.Init, print)
+
+  xpcall(SpiritManager.Init, print)
+
+  xpcall(ItemManager.Init, print)
 
   --[[ Initialize Game Handler: ]]
   this.clockTrigger = CreateTrigger()
@@ -24,5 +30,9 @@ function this.GameHandler()
   DefenderManager.Process()
 
   AbominationManager.Process()
+
+  MultiboardManager.Process()
+
+  ShopManager.Process()
 end
 

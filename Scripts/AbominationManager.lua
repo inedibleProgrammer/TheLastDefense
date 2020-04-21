@@ -31,7 +31,7 @@ function Abomination.Create(name, player, targetPlayer, spawnPoint)
     local isHero = true
     local levelRestraint = true
     local badUnit = false
-    local attemptCounter = 100
+    local attemptCounter = 10
 
     -- Select a random unit that is not a hero, and meets the level restraint:
     while( ((isHero == true) or (levelRestraint == true) or (badUnit == true)) and (attemptCounter >= 0) ) do
@@ -119,6 +119,7 @@ function this.Init()
   this.InitializeFinalBoss()
 
   --[[ Add Commands: ]]
+  -- Game Parameters
   local function GameParameters()
     local parameters = "P"
     parameters = parameters .. ";" .. this.level
@@ -129,6 +130,15 @@ function this.Init()
     print(parameters)
   end
   CommandManager.AddCommand("parameters", GameParameters)
+  -- AbominationData
+  local function AbominationData()
+    for k,v in ipairs(this.AbominationList) do
+      local abominationData = "A"
+      abominationData = abominationData .. ";" .. tostring(v.targetPlayer)
+      print(abominationData)
+    end
+  end
+  CommandManager.AddCommand("abominations", AbominationData)
 end
 
 function this.InitializeAbominations()
