@@ -18,6 +18,8 @@ function this.Init()
 
   xpcall(SpiritManager.Init, print)
 
+  xpcall(TestManager.Init, print)
+
   xpcall(ItemManager.Init, print)
 
   --[[ Initialize Game Handler: ]]
@@ -34,6 +36,8 @@ function this.GameHandler()
   AbominationManager.Process()
 
   MultiboardManager.Process()
+
+  SpiritManager.Process()
 
   ShopManager.Process()
 end

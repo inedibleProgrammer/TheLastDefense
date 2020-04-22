@@ -1,3 +1,5 @@
+gg_trg_Untitled_Trigger_001 = nil
+gg_trg_AddItemToStock = nil
 gg_trg_ItemTesting = nil
 gg_trg_AUnitDies = nil
 gg_trg_camera = nil
@@ -8,6 +10,8 @@ gg_trg_CreateUnitAndAttackGround = nil
 gg_trg_Melee_Initialization = nil
 gg_trg_CallInit = nil
 gg_unit_nten_0015 = nil
+gg_trg_ManaRegen = nil
+gg_unit_ngol_0030 = nil
 function InitGlobals()
 end
 
@@ -205,17 +209,6 @@ end
 
 function this.GetElapsedSeconds()
   return this.elapsedSeconds
-end
---[[ The beginning of everything ]]
-
-function Init()
-  xpcall(CommandManager.Init("-c"), print)
-
-  xpcall(ColorManager.Init, print)
-
-  xpcall(GameClock.Init, print)
-
-  xpcall(PlayerManager.Init, print)
 end
 PlayerManager = {}
 local this = PlayerManager
@@ -439,6 +432,1837 @@ function Utility.AttackRandomUnitOfPlayer(commandedUnit, targetPlayer)
 end
 
 -- End Unit Group Functions
+AbominationManager = {}
+local this = AbominationManager
+
+-- this.gameParameters = {} -- No longer necessary
+this.nSpawnCount = 1 -- Number of units to spawn each spawn tick
+this.spawnPeriod = 10 -- Seconds
+this.burstPeriod = 30 -- Seconds
+this.upgradePeriod = 300 -- Seconds
+this.level = 0 -- Scale monster spawning
+this.upgradesFinished = false
+this.unitSteroidEnabled = false -- Start adding HP to units
+this.unitSteroidCounter = 1 -- Add 100 * this counter HP to units
+
+this.finalBoss = {}
+
+-- List of abominations:
+this.AbominationList = {}
+
+--[[ Definition of an Abomination: ]]
+Abomination = {}
+function Abomination.Create(name, player, targetPlayer, spawnPoint)
+  local this = {}
+  this.name = name
+  this.player = player -- The actual Player() of the abomination
+  this.spawnPoint = spawnPoint
+  this.targetPlayer = targetPlayer -- The player to be targeted by the abomination.
+  this.objectivePoint = Utility.Point.Create(0.0, 0.0)
+  this.active = false
+
+  function this.SpawnRandomUnit()
+    local isHero = true
+    local levelRestraint = true
+    local badUnit = false
+    local attemptCounter = 10
+
+    -- Select a random unit that is not a hero, and meets the level restraint:
+    while( ((isHero == true) or (levelRestraint == true) or (badUnit == true)) and (attemptCounter >= 0) ) do
+      local r = GetRandomInt(1, #AllUnitList)
+      local uID = AllUnitList[r]
+
+      isHero = IsHeroUnitId(FourCC(AllUnitList[r]))
+      levelRestraint = (GetFoodUsed(FourCC(uID)) > AbominationManager.level)
+
+      if(AbominationManager.level < 1) then
+        if(uID == "obai" -- Baine
+        or uID == "nmed" -- Medivh
+        or uID == "hcth" -- Captain
+        or uID == "uktn") -- Kel'Thuzad
+        then
+          badUnit = true
+        end
+      end
+
+      if(uID == "nspc") then -- Support column
+        badUnit = true
+      end
+
+      if(isHero or levelRestraint) then
+        -- Do nothing
+      else
+        if(badUnit) then
+          -- Do nothing
+        else
+          local u = CreateUnit(this.player, FourCC(AllUnitList[r]), this.spawnPoint.x, this.spawnPoint.y, 0.0)
+          this.ApplyUnitModifications(u)
+        end
+      end
+
+      attemptCounter = attemptCounter - 1
+      u = nil
+    end
+
+    -- Make all the lazy monsters attack!
+    local function IsIdle()
+      local idleUnit = GetEnumUnit()
+      if( (GetUnitCurrentOrder(idleUnit) ~= 851983) and (idleUnit ~= AbominationManager.finalBoss.u) ) then -- TODO: can this be a condition?
+        Utility.AttackRandomUnitOfPlayer(idleUnit, this.targetPlayer)
+      end
+      idleUnit = nil
+    end
+
+    local g = CreateGroup()
+    GroupEnumUnitsOfPlayer(g, this.player, nil)
+    ForGroup(g, IsIdle)
+    DestroyGroup(g)
+    g = nil
+  end
+
+  function this.ApplyUnitModifications(relevantUnit)
+    SetUnitCreepGuard(relevantUnit, false)
+    RemoveGuardPosition(relevantUnit)
+    SetUnitColor(relevantUnit, PLAYER_COLOR_COAL) -- Or should I change the colors of the AI players?
+
+    if(AbominationManager.unitSteroidEnabled) then
+      local currentHP = BlzGetUnitMaxHP(relevantUnit)
+      currentHP = currentHP + (100 * AbominationManager.unitSteroidCounter)
+      BlzSetUnitMaxHP(relevantUnit, currentHP)
+      SetUnitLifePercentBJ(relevantUnit, 100.0)
+    end
+  end
+
+  return this
+end
+
+--[[ End Definition of an Abomination ]]
+
+function this.Init()
+  --[[ Create the Abominations: ]]
+  this.InitializeAbominations()
+
+  --[[ For every player in the game, there needs to be an abomination targeting that player ]]
+  for k,v in ipairs(DefenderManager.DefenderList) do
+    AbominationManager.AbominationList[k].active = true
+    AbominationManager.AbominationList[k].objectivePoint = v.startingPoint
+    AbominationManager.AbominationList[k].targetPlayer = v.player
+  end
+
+  -- Wormwood
+  this.InitializeFinalBoss()
+
+  --[[ Add Commands: ]]
+  -- Game Parameters
+  local function GameParameters()
+    local parameters = "P"
+    parameters = parameters .. ";" .. this.level
+    parameters = parameters .. ";" .. tostring(this.upgradesFinished)
+    parameters = parameters .. ";" .. tostring(this.unitSteroidEnabled)
+    parameters = parameters .. ";" .. this.unitSteroidCounter
+    parameters = parameters .. ";"
+    print(parameters)
+  end
+  CommandManager.AddCommand("parameters", GameParameters)
+  -- AbominationData
+  local function AbominationData()
+    for k,v in ipairs(this.AbominationList) do
+      local abominationData = "A"
+      abominationData = abominationData .. ";" .. tostring(v.targetPlayer)
+      print(abominationData)
+    end
+  end
+  CommandManager.AddCommand("abominations", AbominationData)
+end
+
+function this.InitializeAbominations()
+  -- Abominations have fixed starting locations, so hard-code their spawn points.
+
+  -- First Abomination:
+  local firstAbominationSpawnPoint = Utility.Point.Create(-4972.4, 4902.7)
+  this.firstAbomination = Abomination.Create("FirstAbomination", Player(10), Player(0), firstAbominationSpawnPoint) -- Player(0) is temporary and will be overwritten.
+
+  -- Second Abomination:
+  local secondAbominationSpawnPoint = Utility.Point.Create(-5779.8, 5775.5)
+  this.secondAbomination = Abomination.Create("SecondAbomination", Player(14), Player(0), secondAbominationSpawnPoint)
+
+  -- Third Abomination:
+  local thirdAbominationSpawnPoint = Utility.Point.Create(-4099.6, 5800.0)
+  this.thirdAbomination = Abomination.Create("ThirdAbomination", Player(18), Player(0), thirdAbominationSpawnPoint)
+
+  -- Fourth Abomination:
+  local fourthAbominationSpawnPoint = Utility.Point.Create(-2716.0, 5304.5)
+  this.fourthAbomination = Abomination.Create("FourthAbomination", Player(22), Player(0), fourthAbominationSpawnPoint)
+
+  -- Add Abominations to the list:
+  table.insert(this.AbominationList, this.firstAbomination)
+  table.insert(this.AbominationList, this.secondAbomination)
+  table.insert(this.AbominationList, this.thirdAbomination)
+  table.insert(this.AbominationList, this.fourthAbomination)
+
+  --[[ For every player in the game, there needs to be an abomination targeting that player ]]
+  for k,v in ipairs(DefenderManager.DefenderList) do
+    this.AbominationList[k].active = true
+    this.AbominationList[k].objectivePoint = v.startingPoint
+    this.AbominationList[k].targetPlayer = v.player
+  end
+
+  -- Remove Abomination Starting Units:
+  for k,v in ipairs(this.AbominationList) do
+    local function RemoveAbominableUnit()
+      local u = GetEnumUnit()
+      RemoveUnit(u)
+      u = nil
+    end
+
+    local g = CreateGroup()
+    GroupEnumUnitsOfPlayer(g, v.player, nil)
+    ForGroup(g, RemoveAbominableUnit)
+    DestroyGroup(g)
+    g = nil
+  end
+end
+
+function this.InitializeFinalBoss()
+  this.finalBoss.point = Utility.Point.Create(-4592.5, 5275.7)
+  this.finalBoss.u = CreateUnit(Player(10), FourCC("nbal"), this.finalBoss.point.x, this.finalBoss.point.y, 270.0)
+
+  --[[ Add some legit modifications ]]
+  -- Name:
+  BlzSetUnitName(this.finalBoss.u, "Wormwood")
+
+  -- Health:
+  BlzSetUnitMaxHP(this.finalBoss.u, 100000)
+  SetUnitLifePercentBJ(this.finalBoss.u, 100.0)
+
+  -- HP Regen
+  BlzSetUnitRealField(this.finalBoss.u, UNIT_RF_HIT_POINTS_REGENERATION_RATE, 100)
+
+  -- Damage
+  BlzSetUnitBaseDamage(this.finalBoss.u, 500, 0) -- Ground
+  BlzSetUnitBaseDamage(this.finalBoss.u, 500, 1) -- Air
+
+  -- Armor
+  BlzSetUnitArmor(this.finalBoss.u, 150)
+
+  -- Size, color, tint
+  SetUnitScale(this.finalBoss.u, 2.0, 0.0, 0.0)
+  SetUnitColor(this.finalBoss.u, PLAYER_COLOR_COAL)
+  SetUnitVertexColor(this.finalBoss.u, 100, 100, 100, 255)
+end
+
+function this.AbominationSpawn()
+  for k,v in ipairs(this.AbominationList) do
+    if(v.active) then
+      v.SpawnRandomUnit()
+    end
+  end
+end
+
+function this.DoUpgrades()
+  this.upgradesFinished = true
+
+  for _,abom in ipairs(this.AbominationList) do
+    for _,upg in ipairs(AllRacesUpgradeList) do
+      AddPlayerTechResearched(abom.player, FourCC(upg), 3)
+    end
+  end
+end
+
+function this.UpdateAbominationTargets()
+  for k,v in ipairs(this.AbominationList) do
+    local unitsRemaining = GetPlayerUnitCount(v.targetPlayer, true) -- Abominations don't have a reference to their defender. Only the player.
+    if(unitsRemaining <= 0) then
+      local randomInt = GetRandomInt(1, #DefenderManager.DefenderList)
+      if(DefenderManager.DefenderList[randomInt].alive) then
+        print("new target")
+        v.targetPlayer = DefenderManager.DefenderList[randomInt].player
+      end
+    end
+  end
+end
+
+--[[ The Main Process: ]]
+function this.Process()
+  local currentElapsedSeconds = GameClock.GetElapsedSeconds()
+
+  if(ModuloInteger(currentElapsedSeconds, this.upgradePeriod) == 0) then
+    this.level = this.level + 1
+
+    if(this.unitSteroidEnabled) then
+      this.unitSteroidCounter = this.unitSteroidCounter + 1
+    end
+  end
+
+  if(ModuloInteger(currentElapsedSeconds, this.burstPeriod) == 0) then
+    this.nSpawnCount = 5
+  else
+    this.nSpawnCount = 1
+  end
+
+  if(ModuloInteger(currentElapsedSeconds, this.spawnPeriod) == 0) then
+    for i=1, this.nSpawnCount do
+      this.AbominationSpawn()
+    end
+  end
+
+  -- After a certain point, we should ramp up the difficulty:
+  if( (this.level == 5) and not(this.upgradesFinished) ) then
+    this.DoUpgrades()
+  end
+
+  -- Time to apply steroids?
+  if( this.level == 7 and not(this.unitSteroidEnabled) ) then
+    this.unitSteroidEnabled = true
+  end
+
+  -- give the respective abomination of a dead defender a new living target defender
+  this.UpdateAbominationTargets()
+end
+DefenderManager = {}
+local this = DefenderManager
+
+this.DefenderList = {}
+
+--[[ Definition of a Defender: ]]
+Defender = {}
+function Defender.Create(playerNumber)
+  local this = {}
+  this.playerNumber = playerNumber
+  this.player = Player(this.playerNumber)
+  this.killCount = 0
+  this.alive = false
+
+  return this
+end
+--[[ End Definition of a Defender ]]
+
+function this.Init()
+  --[[ Identify the Defenders: ]]
+  for k,v in ipairs(PlayerManager.PlayerList) do
+    if (v.number < 4) then
+      local d = Defender.Create(v.number)
+      d.alive = true
+      table.insert(this.DefenderList, d)
+    end
+  end
+
+  --[[ Load AI for the defenders that are AI controlled: ]]
+  for k,v in ipairs(this.DefenderList) do
+    if( GetPlayerController(v.player) == MAP_CONTROL_COMPUTER ) then
+      if( GetPlayerRace(v.player) == RACE_HUMAN ) then
+        StartMeleeAI(v.player, "human.ai")
+      elseif( GetPlayerRace(v.player) == RACE_ORC ) then
+        StartMeleeAI(v.player, "orc.ai")
+      elseif( GetPlayerRace(v.player) == RACE_UNDEAD ) then
+        StartMeleeAI(v.player, "undead.ai")
+      elseif( GetPlayerRace(v.player) == RACE_NIGHTELF ) then
+        StartMeleeAI(v.player, "elf.ai")
+      end
+      ShareEverythingWithTeamAI(v.player)
+    end
+  end
+
+  --[[ Trigger for Counting Kills: ]]
+  local function KillCountingHandler()
+    local p = GetOwningPlayer(GetKillingUnit())
+
+    for k,v in ipairs(this.DefenderList) do
+      if(Player(v.playerNumber) == p) then
+        v.killCount = v.killCount + 1
+      end
+    end
+  end
+  this.killCountingTrigger = CreateTrigger()
+  TriggerAddAction(this.killCountingTrigger, KillCountingHandler)
+  for k,v in ipairs(AbominationManager.AbominationList) do
+    TriggerRegisterPlayerUnitEvent(this.killCountingTrigger, v.player, EVENT_PLAYER_UNIT_DEATH, nil)
+  end
+
+  --[[ Add Commands: ]]
+  local function DefenderData()
+    for k,v in ipairs(this.DefenderList) do
+      local defenderData = "D"
+      defenderData = defenderData .. ";" .. GetPlayerName(v.player)
+      defenderData = defenderData .. ";" .. v.killCount
+      defenderData = defenderData .. ";" .. v.alive
+      print(defenderData)
+    end
+  end
+  CommandManager.AddCommand("defenders", DefenderData)
+end
+
+function this.DetermineLivingDefenders()
+  for k,v in ipairs(this.DefenderList) do
+    local unitsRemaining = GetPlayerUnitCount(v.player, true)
+    if( v.alive and (unitsRemaining <= 0) ) then
+      print("Player dead")
+      v.alive = false
+    end
+  end
+end
+
+--[[ The Main Process: ]]
+function this.Process()
+  -- if a defender has lost all his units he is dead
+  this.DetermineLivingDefenders()
+end
+--[[ The beginning of everything ]]
+
+function Init()
+  xpcall(CommandManager.Init("-c"), print)
+
+  xpcall(ColorManager.Init, print)
+
+  xpcall(GameClock.Init, print)
+
+  xpcall(PlayerManager.Init, print)
+
+  xpcall(TheLastDefense.Init, print)
+end
+PermanentItemList = 
+{
+  "afac",
+  "spsh",
+  "ajen",
+  "bgst",
+  "belv",
+  "bspd",
+  "cnob",
+  "ratc",
+  "rat6",
+  "rat9",
+  "clfm",
+  "clsd",
+  "crys",
+  "dsum",
+  "rst1",
+  "gcel",
+  "hval",
+  "hcun",
+  "rhth",
+  "kpin",
+  "lgdh",
+  "rin1",
+  "mcou",
+  "odef",
+  "penr",
+  "pmna",
+  "prvt",
+  "rde2",
+  "rde3",
+  "rde4",
+  "rlif",
+  "ciri",
+  "brac",
+  "sbch",
+  "rag1",
+  "rwiz",
+  "ssil",
+  "stel",
+  "evtl",
+  "lhst",
+  "war2",
+}
+
+ChargedItemList =
+{
+  "wild",
+  "ankh",
+  "fgsk",
+  "fgdg",
+  "whwd",
+  "hlst",
+  "shar",
+  "infs",
+  "mnst",
+  "pdi2",
+  "pdiv",
+  "pghe",
+  "pgma",
+  "pnvu",
+  "pomn",
+  "pres",
+  "fgrd",
+  "rej3",
+  "sand",
+  "sres",
+  "srrc",
+  "sror",
+  "wswd",
+  "fgfh",
+  "fgrg",
+  "totw",
+  "will",
+  "wlsd",
+  "woms",
+  "wshs",
+  "wcyc",
+}
+
+PowerUpItemList =
+{
+  "lmbr",
+  "gfor",
+  "gomn",
+  "guvi",
+  "gold",
+  "manh",
+  "rdis",
+  "rhe3",
+  "rma2",
+  "rre2",
+  "rhe2",
+  "rhe1",
+  "rre1",
+  "rman",
+  "rreb",
+  "rres",
+  "rsps",
+  "rspd",
+  "rspl",
+  "rwat",
+  "tdex",
+  "rdx2",
+  "texp",
+  "tint",
+  "tin2",
+  "tpow",
+  "tstr",
+  "tst2",
+}
+
+ArtifactItemList =
+{
+  "ratf",
+  "ckng",
+  "desc",
+  "modt",
+  "ofro",
+  "tkno",
+}
+
+PurchasableItemList = 
+{
+  "pclr",
+  "hslv",
+  "tsct",
+  "plcl",
+  "mcri",
+  "moon",
+  "phea",
+  "pinv",
+  "pnvl",
+  "pman",
+  "ritd",
+  "rnec",
+  "skul",
+  "shea",
+  "sman",
+  "spro",
+  "sreg",
+  "shas",
+  "stwp",
+  "silk",
+  "sneg",
+  "ssan",
+  "tcas",
+  "tgrh",
+  "tret",
+  "vamp",
+  "wneg",
+  "wneu",
+}
+
+CampaignItemList =
+{
+  "kybl",
+  "ches",
+  "bzbe",
+  "engs",
+  "bzbf",
+  "gmfr",
+  "ledg",
+  "kygh",
+  "gopr",
+  "azhr",
+  "cnhn",
+  "dkfw",
+  "k3m3",
+  "mgtk",
+  "mort",
+  "kymn",
+  "k3m1",
+  "jpnt",
+  "k3m2",
+  "phlt",
+  "sclp",
+  "sxpl",
+  "sorf",
+  "shwd",
+  "skrt",
+  "glsk",
+  "kysn",
+  "sehr",
+  "thle",
+  "dphe",
+  "dthb",
+  "ktrm",
+  "vpur",
+  "wtlg",
+  "wolg",
+}
+
+MiscellaneousItemList =
+{
+  "amrc",
+  "axas",
+  "anfg",
+  "pams",
+  "arsc",
+  "arsh",
+  "asbl",
+  "btst",
+  "blba",
+  "bfhr",
+  "brag",
+  "cosl",
+  "rat3",
+  "stpg",
+  "crdt",
+  "dtsb",
+  "drph",
+  "dust",
+  "shen",
+  "envl",
+  "esaz",
+  "frhg",
+  "fgun",
+  "fwss",
+  "frgd",
+  "gemt",
+  "gvsm",
+  "gobm",
+  "tels",
+  "rej4",
+  "rej6",
+  "grsl",
+  "hbth",
+  "sfog",
+  "flag",
+  "iwbr",
+  "jdrn",
+  "kgal",
+  "klmm",
+  "rej2",
+  "rej5",
+  "lnrn",
+  "mlst",
+  "mnsf",
+  "rej1",
+  "lure",
+  "nspi",
+  "nflg",
+  "ocor",
+  "ofr2",
+  "ofir",
+  "gldo",
+  "oli2",
+  "olig",
+  "oslo",
+  "oven",
+  "oflg",
+  "pgin",
+  "pspd",
+  "rde0",
+  "rde1",
+  "rnsp",
+  "ram2",
+  "ram4",
+  "ram3",
+  "ram1",
+  "rugt",
+  "rump",
+  "horl",
+  "schl",
+  "ccmd",
+  "rots",
+  "scul",
+  "srbd",
+  "srtl",
+  "sor1",
+  "sora",
+  "sor2",
+  "sor3",
+  "sor4",
+  "sor5",
+  "sor6",
+  "sor7",
+  "sor8",
+  "sor9",
+  "shcw",
+  "shtm",
+  "shhn",
+  "shdt",
+  "shrs",
+  "sksh",
+  "soul",
+  "gsou",
+  "sbok",
+  "sprn",
+  "spre",
+  "stre",
+  "stwa",
+  "thdm",
+  "tbak",
+  "tbar",
+  "tbsm",
+  "tfar",
+  "tlum",
+  "tgxp",
+  "tmsc",
+  "tmmt",
+  "uflg",
+  "vddl",
+  "ward",
+}
+
+AllItemList = {}
+
+
+function ItemList_Init()
+  -- Merge every table into one table:
+  Utility.TableMerge(AllItemList, PermanentItemList)
+  Utility.TableMerge(AllItemList, ChargedItemList)
+  Utility.TableMerge(AllItemList, PowerUpItemList)
+  Utility.TableMerge(AllItemList, ArtifactItemList)
+  Utility.TableMerge(AllItemList, PurchasableItemList)
+  Utility.TableMerge(AllItemList, CampaignItemList)
+  Utility.TableMerge(AllItemList, MiscellaneousItemList)
+end
+ItemManager = {}
+local this = ItemManager
+
+this.ShopItemList = {}
+
+--[[ Definition of a Shop Item: ]]
+ShopItem = {}
+function ShopItem.Create(iID, price)
+  local this = {}
+  this.iID = iID
+  this.price = price
+
+  return this
+end
+--[[ End Definition of a Shop Item ]]
+
+function this.Init()
+  print("Initializing Items: ")
+
+  --[[ Get all the item prices and save them ]]
+  -- This process takes no more than one minute to finish
+  for k,v in ipairs(AllItemList) do
+    local price = this.GetItemPrice(v)
+
+    if (price > 0) then
+      local si = ShopItem.Create(v, price)
+      table.insert(this.ShopItemList, si)
+    end
+  end
+
+  --[[ Add Commands: ]]
+end
+
+--   This function determines the price of an item
+-- by selling the item to a shop and comparing the
+-- user's gold before and after.
+-- relevantItem should be the 4 character string.
+function this.GetItemPrice(relevantItem)
+  local point = Utility.Point.Create(6687.8, 6359.3)
+  local shop = CreateUnit(Player(10), FourCC("ngme"), point.x, point.y, 0.0)
+  local hero = CreateUnit(Player(10), FourCC("Hpal"), point.x, point.y, 0.0)
+  local i = UnitAddItemById(hero, FourCC(relevantItem), 0)
+  local initialGold = GetPlayerState(Player(10),PLAYER_STATE_RESOURCE_GOLD)
+  local finalGold = 0
+  UnitDropItemTarget(hero, i, shop)
+  TriggerSleepAction(0.1)
+  finalGold = (GetPlayerState(Player(10),PLAYER_STATE_RESOURCE_GOLD) - initialGold) * 2
+  RemoveUnit(shop)
+  RemoveUnit(hero)
+  RemoveItem(i)
+  shop = nil
+  hero = nil
+  i = nil
+  return finalGold
+end
+
+function this.GetRandomShopItem()
+  local r = GetRandomInt(1, #this.ShopItemList)
+  local si = {}
+
+  si = this.ShopItemList[r]
+  return si
+end
+MultiboardManager = {}
+local this = MultiboardManager
+
+
+this.delay = 5
+this.initialized = false
+this.multiboard = nil
+this.multiboardRows = 0
+
+function this.Init()
+end
+
+function this.Process()
+  local currentElapsedSeconds = GameClock.GetElapsedSeconds()
+
+  -- Initialize the multiboard
+  if ( (ModuloInteger(currentElapsedSeconds, this.delay) == 0) and not(this.initialized) ) then
+    this.initialized = true
+
+    this.multiboard = CreateMultiboardBJ(2, #(DefenderManager.DefenderList) + 1, "ScoreBoard")
+    MultiboardMinimizeBJ(true, this.multiboard)
+    MultiboardSetItemStyleBJ(this.multiboard, 0, 0, true, false)
+    MultiboardSetItemWidthBJ(this.multiboard, 0, 0, 10)
+
+    for k,v in ipairs(DefenderManager.DefenderList) do
+      MultiboardSetItemValueBJ(this.multiboard, 1, k, "|c" .. ColorManager.GetColor_N(GetPlayerId(v.player) + 1).hexCode ..GetPlayerName(v.player) .. "|r")
+      this.multiboardRows = this.multiboardRows + 1
+    end
+
+    MultiboardSetItemValueBJ(this.multiboard, 1, this.multiboardRows + 1, "|c" .. ColorManager.GetColor_T("gold").hexCode .. "GameTime:" .. "|r")
+  end
+
+  if (this.initialized) then
+    for k,v in ipairs(DefenderManager.DefenderList) do
+      MultiboardSetItemValueBJ(this.multiboard, 2, k, tostring(v.killCount))
+    end
+    MultiboardSetItemValueBJ(this.multiboard, 2, this.multiboardRows + 1, tostring(GameClock.hours) .. ":" .. tostring(GameClock.minutes) .. ":" .. tostring(GameClock.seconds))
+  end
+end
+ShopManager = {}
+local this = ShopManager
+
+this.updatePeriod = 60 -- Seconds
+this.nItems = 8
+
+this.ItemsForSale = {}
+
+function this.Init()
+  local marketPlacePoint = Utility.Point.Create(895.6, -1609.6)
+  this.marketPlace = CreateUnit(Player(27), FourCC("nmrk"), marketPlacePoint.x, marketPlacePoint.y, 0.0)
+
+  --[[ Add Commands: ]]
+  local function ViewShopItems()
+    for k,v in ipairs(this.ItemsForSale) do
+      print(v.iID)
+    end
+  end
+  CommandManager.AddCommand("shop", ViewShopItems)
+end
+
+
+function this.Process()
+  local currentElapsedSeconds = GameClock.GetElapsedSeconds()
+  
+  --[[ Update Shop Items: ]]
+  if (ModuloInteger(currentElapsedSeconds, this.updatePeriod) == 0) then
+    -- First, empty the market
+    if (#this.ItemsForSale >= 1) then
+      for k,v in ipairs(this.ItemsForSale) do
+        RemoveItemFromStock(this.marketPlace, FourCC(v.iID))
+        this.ItemsForSale[k] = nil
+      end
+    end
+
+    -- Now, add items to the shop
+    for i = 1, this.nItems do
+      local si = ItemManager.GetRandomShopItem()
+      table.insert(this.ItemsForSale, si)
+      AddItemToStock(this.marketPlace, FourCC(si.iID), 1, 1)
+    end
+  end
+end
+SpiritManager = {}
+
+local this = SpiritManager
+this.upgradePeriod = 300
+
+this.possibleSpiritList =
+{
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+}
+
+this.SpiritList = {}
+
+--[[ Definition of a Spirit: ]]
+local Spirit = {}
+
+function Spirit.Create(player)
+  local this = {}
+  this.player = player
+  this.unit = CreateUnit(this.player, FourCC("ewsp"), 0.0, 0.0, 0.0)
+  this.nAbilityPoints = 10
+  this.abilityList = {}
+
+  return this
+end
+
+-- End Definition of a Spirit
+
+-- local abilityFound = false
+-- local abilityAdded = false
+-- for _,a in ipairs(s.abilityList) do
+--   if (a == abilityID) then
+--     abilityFound = true
+--   end
+-- end
+-- if (abilityFound) then
+--   if ( IncUnitAbilityLevel(s.unit, FourCC(abilityID)) ) then
+--     s.nAbilityPoints = s.nAbilityPoints - 1
+--   end
+-- else
+--   if ( UnitAddAbility(s.unit, FourCC(abilityID)) ) then
+--     s.nAbilityPoints = s.nAbilityPoints - 1
+--     table.insert(s.abilityList, abilityID)
+--   end
+-- end
+
+
+-- print("test")
+-- local abilityLevel = BlzGetUnitAbility(s.unit, abilityID)
+-- print("abilityLevel: " .. tostring(abilityLevel))
+-- -- if (abilityLevel > 0) then
+-- --   if ( IncUnitAbilityLevel(s.unit, FourCC(abilityID)) ) then
+-- --     s.nAbilityPoints = s.nAbilityPoints - 1
+-- --   end
+-- -- else
+-- --   if ( UnitAddAbility(s.unit, FourCC(abilityID)) ) then
+-- --     s.nAbilityPoints = s.nAbilityPoints - 1
+-- --   end
+-- -- end
+
+function this.Init()
+  this.InitializeSpirits()
+
+  --[[ Add Commands ]]
+  -- Add ability:
+  local function AddAbility(commandData)
+    -- Which player typed the message?
+    for _,s in ipairs(this.SpiritList) do
+      if (commandData.commandingPlayer == s.player) then
+        if (s.nAbilityPoints > 0) then
+          local abilityID = commandData.tokens[3]
+          local abilityFound = false
+          local abilityAdded = false
+          for _,a in ipairs(s.abilityList) do
+            if (a == abilityID) then
+              abilityFound = true
+            end
+          end
+          if (abilityFound) then
+            if ( IncUnitAbilityLevel(s.unit, FourCC(abilityID)) ) then
+              s.nAbilityPoints = s.nAbilityPoints - 1
+            end
+          else
+            if ( UnitAddAbility(s.unit, FourCC(abilityID)) ) then
+              s.nAbilityPoints = s.nAbilityPoints - 1
+              table.insert(s.abilityList, abilityID)
+            end
+          end
+        end
+      end
+    end
+  end
+  CommandManager.AddCommand("add", AddAbility)
+  -- Remove Ability:
+  local function RemoveAbility(commandData)
+    -- Which player typed the message?
+    for _,s in ipairs(this.SpiritList) do
+      if (commandData.commandingPlayer == s.player) then
+        local abilityID = commandData.tokens[3]
+        local abilityLevel = GetUnitAbilityLevel(s.unit, FourCC(abilityID))
+        print("abilitylevel: " .. abilityLevel)
+
+        if (abilityLevel > 1) then
+          if ( DecUnitAbilityLevel(s.unit, FourCC(abilityID)) ) then
+            s.nAbilityPoints = s.nAbilityPoints + 1
+          end
+        elseif (abilityLevel == 1) then
+          if ( UnitRemoveAbility(s.unit, FourCC(abilityID)) ) then
+            s.nAbilityPoints = s.nAbilityPoints + 1
+            for index = 1, #s.abilityList do
+              if (s.abilityList[index] == abilityID) then
+                table.remove(s.abilityList, index)
+              end
+            end
+          end
+        else
+          -- Do nothing
+        end
+      end
+    end
+  end
+  CommandManager.AddCommand("remove", RemoveAbility)
+  -- SpiritData:
+  local function SpiritData()
+    for _,s in ipairs(this.SpiritList) do
+      local spiritData = "S"
+      spiritData = spiritData .. ";" .. GetPlayerName(s.player)
+      spiritData = spiritData .. ";" .. s.nAbilityPoints
+      for _,a in ipairs(s.abilityList) do
+        spiritData = spiritData .. ";" .. a
+      end
+      print(spiritData)
+    end
+  end
+  CommandManager.AddCommand("spirits", SpiritData)
+end
+
+function this.InitializeSpirits()
+  for k,v in ipairs(this.possibleSpiritList) do
+    if(GetPlayerSlotState(Player(v)) == PLAYER_SLOT_STATE_PLAYING) then
+      local function RemoveAllUnits()
+        local u = GetEnumUnit()
+        RemoveUnit(u)
+        u = nil
+      end
+      -- Destroy all of their units:
+      local g = CreateGroup()
+      GroupEnumUnitsOfPlayer(g, Player(v))
+      ForGroup(g, RemoveAllUnits)
+      DestroyGroup(g)
+      g = nil
+      -- Create their wisp:
+      local s = Spirit.Create(Player(v))
+      -- Make the wisp invulnerable:
+      SetUnitInvulnerable(s.unit, true)
+
+      -- Give the wisp mana and regen
+      BlzSetUnitMaxMana(s.unit, 500)
+      BlzSetUnitRealField(s.unit, UNIT_RF_MANA_REGENERATION, 1.00)
+
+      -- Change the wisp name
+      BlzSetUnitName(s.unit, "Spirit")
+
+      -- Add the wisp to the list
+      table.insert(this.SpiritList, s)
+
+      -- Trigger to prevent building:
+      local function BuildTriggerHandler()
+        local u = GetConstructingStructure()
+        TriggerSleepAction(0.1)
+        IssueImmediateOrderById(u, 851976) -- "Cancel"
+      end
+      s.buildTrigger = CreateTrigger()
+      TriggerAddAction(s.buildTrigger, BuildTriggerHandler)
+      TriggerRegisterPlayerUnitEvent(s.buildTrigger, Player(v), EVENT_PLAYER_UNIT_CONSTRUCT_START, nil)
+
+
+      -- Remove wisp abilities
+      UnitRemoveAbility(s.unit, FourCC("Aren")) -- renew
+      UnitRemoveAbility(s.unit, FourCC("Adtn")) -- detonate
+      UnitRemoveAbility(s.unit, FourCC("Awha")) -- gather
+      UnitRemoveAbility(s.unit, FourCC("Ault")) -- ultravision
+    end
+  end
+end
+
+function this.Process()
+  local currentElapsedSeconds = GameClock.GetElapsedSeconds()
+
+  -- Initialize the multiboard
+  if ( (ModuloInteger(currentElapsedSeconds, this.upgradePeriod) == 0) ) then
+    for k,v in ipairs(this.SpiritList) do
+      v.nAbilityPoints = v.nAbilityPoints + 1
+    end
+  end
+end
+TestManager = {}
+local this = TestManager
+
+this.RedTable = {}
+
+
+function this.Init()
+  local function RedAdd(commandData)
+    local input = commandData.tokens[3]
+    table.insert(this.RedTable, input)
+  end
+  CommandManager.AddCommand("red_add", RedAdd)
+
+  local function RedRemove(commandData)
+    local input = commandData.tokens[3]
+    for index = 1, #this.RedTable do
+      if (this.RedTable[index] == input) then
+        table.remove(this.RedTable, index)
+      end
+    end
+  end
+  CommandManager.AddCommand("red_remove", RedRemove)
+
+  local function RedPrint()
+    local redData = "R"
+    for k,v in ipairs(this.RedTable) do
+      redData = redData .. ";" .. v
+    end
+    print(redData)
+  end
+  CommandManager.AddCommand("red_print", RedPrint)
+end
+
+function this.Process()
+end
+TheLastDefense = {}
+local this = TheLastDefense
+
+function this.Init()
+  xpcall(AbilityList_Init, print)
+
+  xpcall(ItemList_Init, print)
+
+  xpcall(UnitList_Init, print)
+
+  xpcall(UpgradeList_Init, print)
+
+  xpcall(ShopManager.Init, print)
+
+  xpcall(DefenderManager.Init, print)
+
+  xpcall(AbominationManager.Init, print)
+
+  xpcall(SpiritManager.Init, print)
+
+  xpcall(TestManager.Init, print)
+
+  xpcall(ItemManager.Init, print)
+
+  --[[ Initialize Game Handler: ]]
+  this.clockTrigger = CreateTrigger()
+  TriggerAddAction(this.clockTrigger, this.GameHandler)
+  TriggerRegisterTimerEvent(this.clockTrigger, 1.00, true)
+  --[[ Add Commands: ]]
+end
+
+
+function this.GameHandler()
+  DefenderManager.Process()
+
+  AbominationManager.Process()
+
+  MultiboardManager.Process()
+
+  SpiritManager.Process()
+
+  ShopManager.Process()
+end
+
+
+HumanUnitList = 
+{
+  "hpea",
+  "hfoo",
+  "hkni",
+  "hrif",
+  "hmtm",
+  "hgyr",
+  "hgry",
+  "hmpr",
+  "hsor",
+  "hmtt",
+  "hspt",
+  "hdhw",
+  "Hpal",
+  "Hamg",
+  "Hmkg",
+  "Hblm",
+}
+
+HumanCampaignUnitList =
+{
+  "hhes",
+  "hcth",
+  "hrrh",
+  "nccd",
+  "nccr",
+  "ncco",
+  "nccu",
+  "nwar",
+  "nemi",
+  "nhef",
+  "nhem",
+  "nhea",
+  "nmed",
+  "nser",
+  "hbot",
+  "hdes",
+  "hbsh",
+  "nchp",
+  "nhym",
+  "nws1",
+  "nbee",
+  "njks",
+  "hrdh",
+  "hhdl",
+  "hbew",
+  "nhew",
+  "nbel",
+  "Hssa",
+  "hddt",
+  "Haah",
+  "Hapm",
+  "Hgam",
+  "Hant",
+  "Hart",
+  "Harf",
+  "Hdgo",
+  "Hhkl",
+  "Hjai",
+  "Hjnd",
+  "Hkal",
+  "Hlgr",
+  "Hpb1",
+  "Hmgd",
+  "Hmbr",
+  "Hpb2",
+  "Hvwd",
+  "Huth",
+}
+
+OrcUnitList =
+{
+  "opeo",
+  "ogru",
+  "orai",
+  "otau",
+  "ohun",
+  "ocat",
+  "okod",
+  "owyv",
+  "otbr",
+  "odoc",
+  "oshm",
+  "ospw",
+  "Obla",
+  "Ofar",
+  "Otch",
+  "Oshd",
+}
+
+OrcCampaignUnitList =
+{
+  "owad",
+  "nw2w",
+  "nchw",
+  "nchg",
+  "nchr",
+  "nckb",
+  "ncpn",
+  "obai",
+  "obot",
+  "odes",
+  "ojgn",
+  "nspc",
+  "oosc",
+  "owar",
+  "ogrk",
+  "oswy",
+  "ownr",
+  "odkt",
+  "Nbbc",
+  "Ocbh",
+  "Ocb2",
+  "Nsjs",
+  "Odrt",
+  "Ogrh",
+  "Opgh",
+  "Ogld",
+  "Orex",
+  "Orkn",
+  "Osam",
+  "Othr",
+  "Oths",
+}
+
+UndeadUnitList =
+{
+  "uaco",
+  "ushd",
+  "ugho",
+  "uabo",
+  "umtw",
+  "ucry",
+  "ugar",
+  "uban",
+  "unec",
+  "uobs",
+  "ufro",
+  "Udea",
+  "Ulic",
+  "Udre",
+  "Ucrl",
+}
+
+UndeadCampaignUnitList =
+{
+  "nzom",
+  "nzof",
+  "ubot",
+  "udes",
+  "uubs",
+  "uarb",
+  "uktg",
+  "uktn",
+  "uswb",
+  "ubdd",
+  "ubdr",
+  "Nman",
+  "Uwar",
+  "Npld",
+  "Nklj",
+  "Nmag",
+  "Uanb",
+  "Uear",
+  "Ubal",
+  "Uvng",
+  "Udth",
+  "Uktl",
+  "Umal",
+  "Usyl",
+  "Utic",
+  "Uvar",
+}
+
+NightElfUnitList =
+{
+  "ewsp",
+  "earc",
+  "esen",
+  "edry",
+  "ebal",
+  "ehip",
+  "ehpr",
+  "echm",
+  "edot",
+  "edoc",
+  "emtg",
+  "efdr",
+  "Ekee",
+  "Emoo",
+  "Edem",
+  "Ewar",
+}
+
+NightElfCampaignUnitList = 
+{
+  "nthr",
+  "etrs",
+  "edes",
+  "ebsh",
+  "enec",
+  "eilw",
+  "nwat",
+  "ensh",
+  "nssn",
+  "eshd",
+  "Ecen",
+  "Ekgg",
+  "Eill",
+  "Eevi",
+  "Ewrd",
+  "Emns",
+  "Emfr",
+  "Efur",
+  "Etyr",
+}
+
+NagaUnitList =
+{
+  "nwgs",
+  "nnmg",
+  "nnsw",
+  "nsnp",
+  "nmyr",
+  "nnrg",
+  "nhyc",
+  "nmpe",
+  "Hvsh",
+}
+
+NeutralHostileUnitList =
+{
+  "nanm",
+  "nanb",
+  "nanc",
+  "nanw",
+  "nane",
+  "nano",
+  "nban",
+  "nbrg",
+  "nrog",
+  "nass",
+  "nenf",
+  "nbld",
+  "nbdm",
+  "nbda",
+  "nbdw",
+  "nbds",
+  "nbdo",
+  "ncea",
+  "ncer",
+  "ncim",
+  "ncen",
+  "ncks",
+  "ncnk",
+  "nscb",
+  "nsc2",
+  "nsc3",
+  "ndtr",
+  "ndtp",
+  "ndtt",
+  "ndtb",
+  "ndth",
+  "ndtw",
+  "ndrf",
+  "ndrm",
+  "ndrp",
+  "ndrw",
+  "ndrh",
+  "ndrd",
+  "ndrs",
+  "nrdk",
+  "nrdr",
+  "nrmw",
+  "nbdr",
+  "nbdk",
+  "nbwm",
+  "nbzw",
+  "nbzk",
+  "nbzd",
+  "ngrw",
+  "ngdk",
+  "ngrd",
+  "nadw",
+  "nadk",
+  "nadr",
+  "nnht",
+  "nndk",
+  "nndr",
+  "nrel",
+  "nele",
+  "nsel",
+  "nelb",
+  "nenc",
+  "nenp",
+  "nepl",
+  "ners",
+  "nerd",
+  "nerw",
+  "nfor",
+  "nfot",
+  "nfod",
+  "nfgu",
+  "nfgb",
+  "nfov",
+  "npfl",
+  "nfel",
+  "npfm",
+  "nftr",
+  "nfsp",
+  "nftt",
+  "nftb",
+  "nfsh",
+  "nftk",
+  "nfrl",
+  "nfrs",
+  "nfrp",
+  "nfrb",
+  "nfrg",
+  "nfre",
+  "nfra",
+  "ngh1",
+  "ngh2",
+  "nsgn",
+  "nsgh",
+  "nsgb",
+  "nspb",
+  "nspg",
+  "nspr",
+  "nssp",
+  "nsgt",
+  "nsbm",
+  "ngna",
+  "ngns",
+  "ngno",
+  "ngnb",
+  "ngnw",
+  "ngnv",
+  "ngrk",
+  "ngst",
+  "nggr",
+  "narg",
+  "nwrg",
+  "nsgg",
+  "nhar",
+  "ngrr",
+  "nhrw",
+  "nhrh",
+  "nhrq",
+  "nhfp",
+  "nhdc",
+  "nhhr",
+  "nhyh",
+  "nhyd",
+  "nehy",
+  "nahy",
+  "nitr",
+  "nitp",
+  "nitt",
+  "nits",
+  "nith",
+  "nitw",
+  "ninc",
+  "ninm",
+  "nina",
+  "nkob",
+  "nkog",
+  "nkot",
+  "nkol",
+  "nltl",
+  "nthl",
+  "nstw",
+  "nlpr",
+  "nlpd",
+  "nltc",
+  "nlds",
+  "nlsn",
+  "nlkl",
+  "nwiz",
+  "nwzr",
+  "nwzg",
+  "nwzd",
+  "nmgw",
+  "nmgr",
+  "nmgd",
+  "nmam",
+  "nmit",
+  "nmdr",
+  "nmcf",
+  "nmbg",
+  "nmtw",
+  "nmsn",
+  "nmrv",
+  "nmsc",
+  "nmrl",
+  "nmrr",
+  "nmpg",
+  "nmfs",
+  "nmrm",
+  "nmmu",
+  "nspd",
+  "nnwa",
+  "nnwl",
+  "nnwr",
+  "nnws",
+  "nnwq",
+  "nogr",
+  "nomg",
+  "nogm",
+  "nogl",
+  "nowb",
+  "nowe",
+  "nowk",
+  "nplb",
+  "nplg",
+  "nfpl",
+  "nfps",
+  "nfpt",
+  "nfpc",
+  "nfpe",
+  "nfpu",
+  "nrzt",
+  "nrzs",
+  "nqbh",
+  "nrzb",
+  "nrzm",
+  "nrzg",
+  "nrvf",
+  "nrev",
+  "nrvs",
+  "nsrv",
+  "nrvl",
+  "nrvi",
+  "ndrv",
+  "nrvd",
+  "nlrv",
+  "nslh",
+  "nslr",
+  "nslv",
+  "nsll",
+  "nsqt",
+  "nsqe",
+  "nsqo",
+  "nsqa",
+  "nsty",
+  "nsat",
+  "nsts",
+  "nstl",
+  "nsth",
+  "nsko",
+  "nsog",
+  "nsoc",
+  "nslm",
+  "nslf",
+  "nsln",
+  "nsra",
+  "nsrh",
+  "nsrn",
+  "nsrw",
+  "ndqn",
+  "ndwv",
+  "ndqt",
+  "ndqp",
+  "ndqs",
+  "ntrh",
+  "ntrs",
+  "ntrt",
+  "ntrg",
+  "ntrd",
+  "ntkf",
+  "ntka",
+  "ntkh",
+  "ntkt",
+  "ntkw",
+  "ntks",
+  "ntkc",
+  "nubk",
+  "nubr",
+  "nubw",
+  "nvdl",
+  "nvdw",
+  "nvdg",
+  "nvde",
+  "nwen",
+  "nwnr",
+  "nwns",
+  "nwna",
+  "nwwf",
+  "nwlt",
+  "nwwg",
+  "nwlg",
+  "nwwd",
+  "nwld",
+  "nska",
+  "nskf",
+  "nskm",
+  "nbal",
+  "ninf",
+  "ndrj",
+  "ndmu",
+  "nskg",
+  "njg1",
+  "njga",
+  "njgb",
+  "Nmsr", -- There's a murloc hero??
+  "ndrl",
+  "ndrt",
+  "ndrn",
+  "ngow",
+  "ngos",
+  "nggd",
+  "nggg",
+  "nggm",
+  "nwzw",
+  "nogo",
+  "nogn",
+  "noga",
+  "ndsa",
+  "nglm",
+  "nfgl",
+}
+
+NeutralPassiveUnitList =
+{
+  "nalb",
+  "nech",
+  "ncrb",
+  "ndog",
+  "ndwm",
+  "nfbr",
+  "nfro",
+  "nhmc",
+  "npng",
+  "npig",
+  "necr",
+  "nrac",
+  "nrat",
+  "nsea",
+  "nshe",
+  "nskk",
+  "nsno",
+  "uder",
+  "uvul",
+  "nske",
+  "Nalc",
+  "Nswt",
+  "Nngs",
+  "Ntin",
+  "Nbst",
+  "nbpm",
+  "Nbrn",
+  "Nfir",
+  "Nplh",
+  "zcso",
+  "zhyd",
+  "zmar",
+  "zjug",
+  "zzrg",
+  "nvlk",
+  "nvk2",
+  "ngog",
+  "nvlw",
+  "nvl2",
+  "nvil",
+  "ncat",
+  "Naka",
+}
+
+AllRacesUnitList = {}
+
+AllUnitList = {}
+
+
+function UnitList_Init()
+  -- Merge the four races into one table:
+  Utility.TableMerge(AllRacesUnitList, HumanUnitList)
+  Utility.TableMerge(AllRacesUnitList, OrcUnitList)
+  Utility.TableMerge(AllRacesUnitList, UndeadUnitList)
+  Utility.TableMerge(AllRacesUnitList, NightElfUnitList)
+
+  -- Merge everything into one big table:
+  Utility.TableMerge(AllUnitList, AllRacesUnitList)
+  Utility.TableMerge(AllUnitList, HumanCampaignUnitList)
+  Utility.TableMerge(AllUnitList, OrcCampaignUnitList)
+  Utility.TableMerge(AllUnitList, UndeadCampaignUnitList)
+  Utility.TableMerge(AllUnitList, NightElfCampaignUnitList)
+  Utility.TableMerge(AllUnitList, NeutralHostileUnitList)
+  Utility.TableMerge(AllUnitList, NeutralPassiveUnitList)
+end
+
+HumanUpgradeList =
+{
+  "Rhan",
+  "Rhpm",
+  "Rhrt",
+  "Rhra",
+  "Rhcd",
+  "Rhss",
+  "Rhde",
+  "Rhfc",
+  "Rhfl",
+  "Rhgb",
+  "Rhfs",
+  "Rhlh",
+  "Rhac",
+  "Rhme",
+  "Rhar",
+  "Rhri",
+  "Rhse",
+  "Rhpt",
+  "Rhst",
+  "Rhhb",
+  "Rhla",
+  "Rhsb",
+}
+
+OrcUpgradeList = 
+{
+  "Ropm",
+  "Robk",
+  "Robs",
+  "Robf",
+  "Roen",
+  "Rovs",
+  "Rolf",
+  "Ropg",
+  "Rows",
+  "Rorb",
+  "Rost",
+  "Rost",
+  "Rosp",
+  "Rowt",
+  "Roar",
+  "Rome",
+  "Rora",
+  "Rotr",
+  "Rwdm",
+  "Rowd",
+}
+
+UndeadUpgradeList = 
+{
+  "Rupm",
+  "Ruba",
+  "Rubu",
+  "Ruac",
+  "Rura",
+  "Rucr",
+  "Rusp",
+  "Rupc",
+  "Ruex",
+  "Rufb",
+  "Rugf",
+  "Rune",
+  "Rusl",
+  "Rusm",
+  "Rusf",
+  "Ruar",
+  "Rume",
+  "Ruwb",
+}
+
+NightElfUpgradeList =
+{
+  "Resi",
+  "Repm",
+  "Recb",
+  "Redc",
+  "Redt",
+  "Rehs",
+  "Reht",
+  "Reib",
+  "Reeb",
+  "Reec",
+  "Remk",
+  "Rema",
+  "Renb",
+  "Rerh",
+  "Rers",
+  "Resc",
+  "Resm",
+  "Resw",
+  "Reuv",
+  "Remg",
+  "Repb",
+  "Rews",
+}
+
+AllRacesUpgradeList = {}
+
+function UpgradeList_Init()
+   -- Merge the four races into one table:
+   Utility.TableMerge(AllRacesUpgradeList, HumanUpgradeList)
+   Utility.TableMerge(AllRacesUpgradeList, OrcUpgradeList)
+   Utility.TableMerge(AllRacesUpgradeList, UndeadUpgradeList)
+   Utility.TableMerge(AllRacesUpgradeList, NightElfUpgradeList)
+end
 function CreateNeutralPassiveBuildings()
     local p = Player(PLAYER_NEUTRAL_PASSIVE)
     local u
@@ -458,8 +2282,6 @@ function CreateNeutralPassiveBuildings()
     u = BlzCreateUnitWithSkin(p, FourCC("nmoo"), 576.0, -1024.0, 270.000, FourCC("nmoo"))
     u = BlzCreateUnitWithSkin(p, FourCC("ngad"), 960.0, -1088.0, 270.000, FourCC("ngad"))
     u = BlzCreateUnitWithSkin(p, FourCC("ntav"), 384.0, -1728.0, 270.000, FourCC("ntav"))
-    SetUnitColor(u, ConvertPlayerColor(0))
-    u = BlzCreateUnitWithSkin(p, FourCC("nmrk"), 896.0, -1600.0, 270.000, FourCC("nmrk"))
     SetUnitColor(u, ConvertPlayerColor(0))
     u = BlzCreateUnitWithSkin(p, FourCC("nten"), -480.0, -2144.0, 270.000, FourCC("nten"))
     u = BlzCreateUnitWithSkin(p, FourCC("nten"), 32.0, -2400.0, 270.000, FourCC("nten"))

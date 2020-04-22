@@ -1,7 +1,7 @@
 SpiritManager = {}
 
 local this = SpiritManager
-this.upgradePeriod = 30
+this.upgradePeriod = 300
 
 this.possibleSpiritList =
 {
@@ -22,13 +22,11 @@ function Spirit.Create(player)
   local this = {}
   this.player = player
   this.unit = CreateUnit(this.player, FourCC("ewsp"), 0.0, 0.0, 0.0)
-  this.nAbilityPoints = 10
+  this.nAbilityPoints = 1
   this.abilityList = {}
 
   return this
 end
-
--- End Definition of a Spirit
 
 function this.Init()
   this.InitializeSpirits()
@@ -66,13 +64,44 @@ function this.Init()
   -- Remove Ability:
   local function RemoveAbility(commandData)
     -- Which player typed the message?
-    for k,v in ipairs(this.SpiritList) do
-      if (commandData.commandingPlayer == v.player) then
-        DecUnitAbilityLevel(v.unit, FourCC(commandData.tokens[3]))
+    for _,s in ipairs(this.SpiritList) do
+      if (commandData.commandingPlayer == s.player) then
+        local abilityID = commandData.tokens[3]
+        local abilityLevel = GetUnitAbilityLevel(s.unit, FourCC(abilityID)) -- If the unit does not have the ability, and the ability is valid, GetUnitAbilityLevel will return 0
+
+        if (abilityLevel > 1) then
+          if ( DecUnitAbilityLevel(s.unit, FourCC(abilityID)) ) then
+            s.nAbilityPoints = s.nAbilityPoints + 1
+          end
+        elseif (abilityLevel == 1) then
+          if ( UnitRemoveAbility(s.unit, FourCC(abilityID)) ) then
+            s.nAbilityPoints = s.nAbilityPoints + 1
+            for index = 1, #s.abilityList do
+              if (s.abilityList[index] == abilityID) then
+                table.remove(s.abilityList, index)
+              end
+            end
+          end
+        else
+          -- Do nothing
+        end
       end
     end
   end
   CommandManager.AddCommand("remove", RemoveAbility)
+  -- SpiritData:
+  local function SpiritData()
+    for _,s in ipairs(this.SpiritList) do
+      local spiritData = "S"
+      spiritData = spiritData .. ";" .. GetPlayerName(s.player)
+      spiritData = spiritData .. ";" .. s.nAbilityPoints
+      for _,a in ipairs(s.abilityList) do
+        spiritData = spiritData .. ";" .. a
+      end
+      print(spiritData)
+    end
+  end
+  CommandManager.AddCommand("spirits", SpiritData)
 end
 
 function this.InitializeSpirits()
