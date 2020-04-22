@@ -16,8 +16,6 @@ function this.Process()
   -- Initialize the multiboard
   if ( (ModuloInteger(currentElapsedSeconds, this.delay) == 0) and not(this.initialized) ) then
     this.initialized = true
-    
-    print("multiboard init: " .. #(DefenderManager.DefenderList))
 
     this.multiboard = CreateMultiboardBJ(2, #(DefenderManager.DefenderList) + 1, "ScoreBoard")
     MultiboardMinimizeBJ(true, this.multiboard)

@@ -1,6 +1,7 @@
 SpiritManager = {}
 
 local this = SpiritManager
+this.upgradePeriod = 30
 
 this.possibleSpiritList =
 {
@@ -21,7 +22,7 @@ function Spirit.Create(player)
   local this = {}
   this.player = player
   this.unit = CreateUnit(this.player, FourCC("ewsp"), 0.0, 0.0, 0.0)
-  this.nAbilityPoints = 0
+  this.nAbilityPoints = 10
   this.abilityList = {}
 
   return this
@@ -31,6 +32,47 @@ end
 
 function this.Init()
   this.InitializeSpirits()
+
+  --[[ Add Commands ]]
+  -- Add ability:
+  local function AddAbility(commandData)
+    -- Which player typed the message?
+    for _,s in ipairs(this.SpiritList) do
+      if (commandData.commandingPlayer == s.player) then
+        if (s.nAbilityPoints > 0) then
+          local abilityID = commandData.tokens[3]
+          local abilityFound = false
+          local abilityAdded = false
+          for _,a in ipairs(s.abilityList) do
+            if (a == abilityID) then
+              abilityFound = true
+            end
+          end
+          if (abilityFound) then
+            if ( IncUnitAbilityLevel(s.unit, FourCC(abilityID)) ) then
+              s.nAbilityPoints = s.nAbilityPoints - 1
+            end
+          else
+            if ( UnitAddAbility(s.unit, FourCC(abilityID)) ) then
+              s.nAbilityPoints = s.nAbilityPoints - 1
+              table.insert(s.abilityList, abilityID)
+            end
+          end
+        end
+      end
+    end
+  end
+  CommandManager.AddCommand("add", AddAbility)
+  -- Remove Ability:
+  local function RemoveAbility(commandData)
+    -- Which player typed the message?
+    for k,v in ipairs(this.SpiritList) do
+      if (commandData.commandingPlayer == v.player) then
+        DecUnitAbilityLevel(v.unit, FourCC(commandData.tokens[3]))
+      end
+    end
+  end
+  CommandManager.AddCommand("remove", RemoveAbility)
 end
 
 function this.InitializeSpirits()
@@ -51,8 +93,11 @@ function this.InitializeSpirits()
       local s = Spirit.Create(Player(v))
       -- Make the wisp invulnerable:
       SetUnitInvulnerable(s.unit, true)
+
       -- Give the wisp mana and regen
-      
+      BlzSetUnitMaxMana(s.unit, 500)
+      BlzSetUnitRealField(s.unit, UNIT_RF_MANA_REGENERATION, 1.00)
+
       -- Change the wisp name
       BlzSetUnitName(s.unit, "Spirit")
 
@@ -75,6 +120,17 @@ function this.InitializeSpirits()
       UnitRemoveAbility(s.unit, FourCC("Adtn")) -- detonate
       UnitRemoveAbility(s.unit, FourCC("Awha")) -- gather
       UnitRemoveAbility(s.unit, FourCC("Ault")) -- ultravision
+    end
+  end
+end
+
+function this.Process()
+  local currentElapsedSeconds = GameClock.GetElapsedSeconds()
+
+  -- Initialize the multiboard
+  if ( (ModuloInteger(currentElapsedSeconds, this.upgradePeriod) == 0) ) then
+    for k,v in ipairs(this.SpiritList) do
+      v.nAbilityPoints = v.nAbilityPoints + 1
     end
   end
 end

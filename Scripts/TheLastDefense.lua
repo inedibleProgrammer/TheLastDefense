@@ -2,6 +2,8 @@ TheLastDefense = {}
 local this = TheLastDefense
 
 function this.Init()
+  xpcall(AbilityList_Init, print)
+
   xpcall(ItemList_Init, print)
 
   xpcall(UnitList_Init, print)
